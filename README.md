@@ -206,4 +206,4 @@ sudo snap install --dangerous lemonade-server_*.snap
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details.
+Snap packaging is GPL-3 License - See [LICENSE](LICENSE) for details.

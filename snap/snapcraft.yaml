@@ -37,7 +37,7 @@ description: |
 adopt-info: lemonade-server
 grade: stable
 confinement: strict
-license: MIT
+license: Apache-2.0
 
 website: https://lemonade-server.ai
 source-code: https://github.com/lemonade-sdk/lemonade
