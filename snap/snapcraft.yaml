@@ -38,8 +38,8 @@ license: MIT
 
 website: https://lemonade-server.ai
 source-code: https://github.com/lemonade-sdk/lemonade
-issues: https://github.com/kenvandine/lemonade-server/issues
-contact: https://github.com/kenvandine/lemonade-server/issues
+issues: https://github.com/kenvandine/lemonade-server-snap/issues
+contact: https://github.com/kenvandine/lemonade-server-snap/issues
 
 platforms:
   amd64:
@@ -49,6 +49,16 @@ layout:
     symlink: $SNAP/usr/local/share/lemonade-server
 
 apps:
+  metrics:
+    command: bin/metrics
+    plugs:
+      - home
+      - removable-media
+      - network
+      - network-bind
+      - opengl
+      - process-control
+      - hardware-observe
   lemonade-server:
     command: usr/local/bin/lemonade-server
     plugs:
@@ -64,7 +74,7 @@ apps:
       LEMONADE_LLAMACPP_CPU_BIN: "$SNAP/usr/local/lib/llamacpp/cpu/llama-server"
       LEMONADE_LLAMACPP_ROCM_BIN: "$SNAP/usr/local/bin/llama-server-rocm"
   service:
-    command: usr/local/bin/lemonade-server-wrapper serve
+    command: bin/lemonade-server-wrapper serve
     daemon: simple
     install-mode: enable
     restart-condition: on-failure
@@ -93,6 +103,7 @@ parts:
       - libgomp1
       - libatomic1
       - libcurl4t64
+      - curl # for metrics
 
   lemonade-server:
     plugin: dump
@@ -299,11 +310,13 @@ parts:
       EOF
       chmod +x $CRAFT_PART_INSTALL/usr/local/bin/llama-server-rocm
 
-  lemonade-server-wrapper:
+  scripts:
     plugin: dump
-    source: launcher/
+    source: scripts/
     organize:
-      lemonade-server-wrapper: usr/local/bin/lemonade-server-wrapper
+      lemonade-server-wrapper: bin/lemonade-server-wrapper
+      metrics: bin/metrics
     override-prime: |
       craftctl default
-      chmod +x $CRAFT_PRIME/usr/local/bin/lemonade-server-wrapper
+      chmod +x $CRAFT_PRIME/bin/lemonade-server-wrapper
+      chmod +x $CRAFT_PRIME/bin/metrics

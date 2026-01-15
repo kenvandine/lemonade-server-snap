@@ -1,0 +1,283 @@
+#!/bin/bash
+# GPU Monitor for Lemonade Server
+# Displays ROCm status, GPU usage, and memory in real-time
+
+# Colors
+BOLD='\033[1m'
+DIM='\033[2m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+RED='\033[0;31m'
+RESET='\033[0m'
+
+# Find AMD GPU sysfs path
+find_amd_gpu() {
+    for card in /sys/class/drm/card*/device; do
+        if [[ -f "$card/vendor" ]]; then
+            vendor=$(cat "$card/vendor" 2>/dev/null)
+            # AMD vendor ID is 0x1002
+            if [[ "$vendor" == "0x1002" ]]; then
+                echo "$card"
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
+
+# Get GPU name from lspci
+get_gpu_name() {
+    lspci 2>/dev/null | grep -iE "vga|display|3d" | grep -iE "amd|ati" | head -1 | sed 's/.*: //'
+}
+
+# Check if this is an APU (integrated graphics with unified memory)
+is_apu() {
+    local gpu_name="$1"
+    # APUs typically have these identifiers
+    if echo "$gpu_name" | grep -qiE "Radeon.*Graphics|880M|890M|780M|760M|740M|Strix|Phoenix|Hawk|8050|8060"; then
+        return 0
+    fi
+    return 1
+}
+
+# Check if lemonade server is using ROCm
+check_rocm_status() {
+    local status="unknown"
+    local log_line=""
+
+    # Check recent logs for backend info
+    log_line=$(journalctl -u snap.lemonade-server.service.service --no-pager -n 100 2>/dev/null | grep -iE "backend=rocm|using ROCm|gfx1150|gfx1151|gfx110X|gfx120X" | tail -1 || true)
+
+    if [[ -n "$log_line" ]]; then
+        if echo "$log_line" | grep -qiE "rocm|gfx"; then
+            status="active"
+        fi
+    fi
+
+    # Also check if the wrapper detected AMD
+    wrapper_log=$(journalctl -u snap.lemonade-server.service.service --no-pager -n 50 2>/dev/null | grep -i "Lemonade Wrapper" | tail -1 || true)
+
+    echo "$status|$wrapper_log"
+}
+
+# Format bytes to human readable
+format_bytes() {
+    local bytes=$1
+    if [[ $bytes -ge 1073741824 ]]; then
+        echo "$(awk "BEGIN {printf \"%.2f\", $bytes/1073741824}") GB"
+    elif [[ $bytes -ge 1048576 ]]; then
+        echo "$(awk "BEGIN {printf \"%.1f\", $bytes/1048576}") MB"
+    else
+        echo "$bytes B"
+    fi
+}
+
+# Create a progress bar
+progress_bar() {
+    local percent=$1
+    local width=${2:-30}
+    local filled=$((percent * width / 100))
+    local empty=$((width - filled))
+
+    printf "["
+    for ((i=0; i<filled; i++)); do printf "━"; done
+    for ((i=0; i<empty; i++)); do printf "─"; done
+    printf "]"
+}
+
+# Main monitoring function
+monitor() {
+    local gpu_path
+    gpu_path=$(find_amd_gpu) || {
+        echo -e "${RED}No AMD GPU found${RESET}"
+        exit 1
+    }
+
+    local gpu_name
+    gpu_name=$(get_gpu_name)
+
+    # Use alternate screen buffer (like htop/vim)
+    tput smcup 2>/dev/null
+    tput clear 2>/dev/null
+    trap 'tput rmcup 2>/dev/null' EXIT
+
+    while true; do
+        # Move cursor to top and clear to end of screen
+        tput cup 0 0 2>/dev/null
+        tput ed 2>/dev/null
+
+        # Header
+        echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════════╗${RESET}"
+        echo -e "${BOLD}${CYAN}║${RESET}  ${BOLD}Lemonade Server GPU Monitor${RESET}                         ${CYAN}║${RESET}"
+        echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════╝${RESET}"
+        echo ""
+
+        # GPU Info
+        echo -e "${BOLD}GPU:${RESET}"
+        echo -e "  ${gpu_name:-Unknown AMD GPU}"
+        echo ""
+
+        # ROCm Status
+        local rocm_info
+        rocm_info=$(check_rocm_status)
+        local rocm_status="${rocm_info%%|*}"
+        local rocm_log="${rocm_info#*|}"
+
+        if [[ "$rocm_status" == "active" ]]; then
+            echo -e "${BOLD}Backend:${RESET} ${GREEN}● ROCm Active${RESET}"
+        else
+            echo -e "${BOLD}Backend:${RESET} ${YELLOW}○ Checking...${RESET}"
+        fi
+
+        if [[ -n "$rocm_log" ]]; then
+            echo -e "${DIM}  └─ $rocm_log${RESET}"
+        fi
+        echo ""
+
+        # GPU Usage
+        local gpu_busy=0
+        if [[ -f "$gpu_path/gpu_busy_percent" ]]; then
+            gpu_busy=$(cat "$gpu_path/gpu_busy_percent" 2>/dev/null || echo 0)
+        fi
+
+        echo -e "${BOLD}GPU Usage:${RESET}"
+        printf "  "
+        progress_bar "$gpu_busy"
+
+        if [[ $gpu_busy -gt 80 ]]; then
+            echo -e " ${RED}${gpu_busy}%%${RESET}"
+        elif [[ $gpu_busy -gt 50 ]]; then
+            echo -e " ${YELLOW}${gpu_busy}%%${RESET}"
+        else
+            echo -e " ${GREEN}${gpu_busy}%%${RESET}"
+        fi
+        echo ""
+
+        # Memory Usage
+        local vram_used=0
+        local vram_total=0
+        local vram_percent=0
+        local gtt_used=0
+        local gtt_total=0
+        local gtt_percent=0
+
+        if [[ -f "$gpu_path/mem_info_vram_used" ]]; then
+            vram_used=$(cat "$gpu_path/mem_info_vram_used" 2>/dev/null || echo 0)
+        fi
+        if [[ -f "$gpu_path/mem_info_vram_total" ]]; then
+            vram_total=$(cat "$gpu_path/mem_info_vram_total" 2>/dev/null || echo 1)
+        fi
+        if [[ -f "$gpu_path/mem_info_gtt_used" ]]; then
+            gtt_used=$(cat "$gpu_path/mem_info_gtt_used" 2>/dev/null || echo 0)
+        fi
+        if [[ -f "$gpu_path/mem_info_gtt_total" ]]; then
+            gtt_total=$(cat "$gpu_path/mem_info_gtt_total" 2>/dev/null || echo 1)
+        fi
+
+        if [[ $vram_total -gt 0 ]]; then
+            vram_percent=$((vram_used * 100 / vram_total))
+        fi
+        if [[ $gtt_total -gt 0 ]]; then
+            gtt_percent=$((gtt_used * 100 / gtt_total))
+        fi
+
+        # For APUs, show GPU Memory (carved from RAM) and Shared Memory (GTT)
+        if is_apu "$gpu_name"; then
+            echo -e "${BOLD}GPU Memory (dedicated):${RESET}"
+        else
+            echo -e "${BOLD}VRAM:${RESET}"
+        fi
+        printf "  "
+        progress_bar "$vram_percent"
+
+        local vram_used_fmt=$(format_bytes $vram_used)
+        local vram_total_fmt=$(format_bytes $vram_total)
+
+        if [[ $vram_percent -gt 90 ]]; then
+            echo -e " ${RED}${vram_used_fmt} / ${vram_total_fmt}${RESET}"
+        elif [[ $vram_percent -gt 70 ]]; then
+            echo -e " ${YELLOW}${vram_used_fmt} / ${vram_total_fmt}${RESET}"
+        else
+            echo -e " ${GREEN}${vram_used_fmt} / ${vram_total_fmt}${RESET}"
+        fi
+
+        # Show GTT (shared system memory) for APUs
+        if is_apu "$gpu_name"; then
+            echo ""
+            echo -e "${BOLD}Shared Memory (system RAM):${RESET}"
+            printf "  "
+            progress_bar "$gtt_percent"
+
+            local gtt_used_fmt=$(format_bytes $gtt_used)
+            local gtt_total_fmt=$(format_bytes $gtt_total)
+
+            if [[ $gtt_percent -gt 90 ]]; then
+                echo -e " ${RED}${gtt_used_fmt} / ${gtt_total_fmt}${RESET}"
+            elif [[ $gtt_percent -gt 70 ]]; then
+                echo -e " ${YELLOW}${gtt_used_fmt} / ${gtt_total_fmt}${RESET}"
+            else
+                echo -e " ${GREEN}${gtt_used_fmt} / ${gtt_total_fmt}${RESET}"
+            fi
+        fi
+        echo ""
+
+        # Server Status
+        echo -e "${BOLD}Server Status:${RESET}"
+        if curl -s http://localhost:8000/api/v1/models > /dev/null 2>&1; then
+            echo -e "  ${GREEN}● Online${RESET} - http://localhost:8000"
+
+            # Get all available models
+            local model_list
+            model_list=$(curl -s http://localhost:8000/api/v1/models 2>/dev/null | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+            if [[ -n "$model_list" ]]; then
+                echo -e "  ${DIM}Available models:${RESET}"
+                while IFS= read -r model; do
+                    echo -e "  ${DIM}  • ${model}${RESET}"
+                done <<< "$model_list"
+            fi
+        else
+            echo -e "  ${RED}○ Offline${RESET}"
+        fi
+        echo ""
+
+        # Performance Stats
+        local stats_json
+        stats_json=$(curl -s http://localhost:8000/api/v1/stats 2>/dev/null)
+        if [[ -n "$stats_json" ]]; then
+            local tps ttft input_tok output_tok
+            tps=$(echo "$stats_json" | grep -o '"tokens_per_second":[0-9.]*' | cut -d':' -f2)
+            ttft=$(echo "$stats_json" | grep -o '"time_to_first_token":[0-9.]*' | cut -d':' -f2)
+            input_tok=$(echo "$stats_json" | grep -o '"input_tokens":[0-9]*' | cut -d':' -f2)
+            output_tok=$(echo "$stats_json" | grep -o '"output_tokens":[0-9]*' | cut -d':' -f2)
+
+            echo -e "${BOLD}Performance:${RESET}"
+            if [[ -n "$tps" && "$tps" != "0" ]]; then
+                local tps_fmt
+                tps_fmt=$(awk "BEGIN {printf \"%.1f\", $tps}")
+                echo -e "  Tokens/sec: ${GREEN}${tps_fmt}${RESET}"
+            else
+                echo -e "  Tokens/sec: ${DIM}─${RESET}"
+            fi
+            if [[ -n "$ttft" && "$ttft" != "0" ]]; then
+                local ttft_ms
+                ttft_ms=$(awk "BEGIN {printf \"%.0f\", $ttft * 1000}")
+                echo -e "  Time to first token: ${DIM}${ttft_ms}ms${RESET}"
+            fi
+            if [[ -n "$input_tok" && -n "$output_tok" ]]; then
+                echo -e "  ${DIM}Tokens: ${input_tok} in / ${output_tok} out${RESET}"
+            fi
+            echo ""
+        fi
+
+        # Footer
+        echo -e "${DIM}──────────────────────────────────────────────────────${RESET}"
+        echo -e "${DIM}Press Ctrl+C to exit • Refreshing every 1s${RESET}"
+
+        sleep 1
+    done
+}
+
+# Run monitor
+monitor
