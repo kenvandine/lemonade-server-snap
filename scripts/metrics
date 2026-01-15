@@ -27,16 +27,67 @@ find_amd_gpu() {
     return 1
 }
 
-# Get GPU name from lspci
+# Get GPU name from sysfs
 get_gpu_name() {
-    lspci 2>/dev/null | grep -iE "vga|display|3d" | grep -iE "amd|ati" | head -1 | sed 's/.*: //'
+    local gpu_path="$1"
+    local name=""
+
+    # Try product_name first (available on newer kernels)
+    if [[ -f "$gpu_path/product_name" ]]; then
+        name=$(cat "$gpu_path/product_name" 2>/dev/null)
+    fi
+
+    # Fall back to getting info from KFD topology
+    if [[ -z "$name" || "$name" == "unknown" ]]; then
+        local kfd_path="/sys/class/kfd/kfd/topology/nodes"
+        if [[ -d "$kfd_path" ]]; then
+            for node in "$kfd_path"/*/; do
+                if [[ -f "${node}properties" ]]; then
+                    local gfx_ver
+                    gfx_ver=$(grep "^gfx_target_version " "${node}properties" 2>/dev/null | awk '{print $2}')
+                    if [[ -n "$gfx_ver" && "$gfx_ver" != "0" ]]; then
+                        # Convert gfx_target_version to architecture name
+                        # Format: AABBCC where AA=major, BB=minor, CC=stepping
+                        local major=$((gfx_ver / 10000))
+                        local minor=$(((gfx_ver / 100) % 100))
+                        local stepping=$((gfx_ver % 100))
+                        name="AMD GPU (gfx${major}${minor}${stepping})"
+                        break
+                    fi
+                fi
+            done
+        fi
+    fi
+
+    # Last resort: show device/vendor IDs
+    if [[ -z "$name" ]]; then
+        local device_id vendor_id
+        device_id=$(cat "$gpu_path/device" 2>/dev/null)
+        vendor_id=$(cat "$gpu_path/vendor" 2>/dev/null)
+        if [[ -n "$device_id" && -n "$vendor_id" ]]; then
+            name="AMD GPU [${vendor_id}:${device_id}]"
+        else
+            name="Unknown AMD GPU"
+        fi
+    fi
+
+    echo "$name"
 }
 
 # Check if this is an APU (integrated graphics with unified memory)
+# APUs have small dedicated VRAM (carve-out from system RAM, typically < 4GB)
+# Discrete GPUs have larger dedicated VRAM (4GB+)
 is_apu() {
-    local gpu_name="$1"
-    # APUs typically have these identifiers
-    if echo "$gpu_name" | grep -qiE "Radeon.*Graphics|880M|890M|780M|760M|740M|Strix|Phoenix|Hawk|8050|8060"; then
+    local gpu_path="$1"
+    local vram_total=0
+
+    if [[ -f "$gpu_path/mem_info_vram_total" ]]; then
+        vram_total=$(cat "$gpu_path/mem_info_vram_total" 2>/dev/null || echo 0)
+    fi
+
+    # APUs typically have < 4GB dedicated VRAM (carved from system RAM)
+    # 4GB = 4294967296 bytes
+    if [[ $vram_total -lt 4294967296 ]]; then
         return 0
     fi
     return 1
@@ -45,21 +96,32 @@ is_apu() {
 # Check if lemonade server is using ROCm
 check_rocm_status() {
     local status="unknown"
-    local log_line=""
+    local detail=""
 
-    # Check recent logs for backend info
-    log_line=$(journalctl -u snap.lemonade-server.service.service --no-pager -n 100 2>/dev/null | grep -iE "backend=rocm|using ROCm|gfx1150|gfx1151|gfx110X|gfx120X" | tail -1 || true)
-
-    if [[ -n "$log_line" ]]; then
-        if echo "$log_line" | grep -qiE "rocm|gfx"; then
+    local server_pid
+    server_pid=$(pgrep -f "lemonade-server" 2>/dev/null | head -1)
+    if [[ -n "$server_pid" && -f "/proc/$server_pid/cmdline" ]]; then
+        local cmdline
+        cmdline=$(tr '\0' ' ' < "/proc/$server_pid/cmdline" 2>/dev/null)
+        if echo "$cmdline" | grep -q "llamacpp.*rocm\|rocm.*llamacpp"; then
             status="active"
+            detail="Backend: rocm (from process cmdline)"
+        elif echo "$cmdline" | grep -q "llamacpp.*vulkan\|vulkan.*llamacpp"; then
+            status="vulkan"
+            detail="Backend: vulkan (from process cmdline)"
         fi
     fi
 
-    # Also check if the wrapper detected AMD
-    wrapper_log=$(journalctl -u snap.lemonade-server.service.service --no-pager -n 50 2>/dev/null | grep -i "Lemonade Wrapper" | tail -1 || true)
+    if [[ "$status" == "unknown" ]]; then
+        if [[ -c /dev/kfd && -r /dev/kfd ]]; then
+            # KFD device exists and is readable - ROCm should be available
+            detail="ROCm driver available (/dev/kfd present)"
+        else
+            detail="ROCm driver not available"
+        fi
+    fi
 
-    echo "$status|$wrapper_log"
+    echo "$status|$detail"
 }
 
 # Format bytes to human readable
@@ -72,6 +134,33 @@ format_bytes() {
     else
         echo "$bytes B"
     fi
+}
+
+# Get system RAM info from /proc/meminfo (returns: used|total|percent)
+get_system_ram() {
+    local mem_total=0
+    local mem_available=0
+    local mem_used=0
+    local mem_percent=0
+
+    if [[ -f /proc/meminfo ]]; then
+        # Values in /proc/meminfo are in kB
+        mem_total=$(grep "^MemTotal:" /proc/meminfo | awk '{print $2}')
+        mem_available=$(grep "^MemAvailable:" /proc/meminfo | awk '{print $2}')
+
+        if [[ -n "$mem_total" && -n "$mem_available" ]]; then
+            # Convert to bytes
+            mem_total=$((mem_total * 1024))
+            mem_available=$((mem_available * 1024))
+            mem_used=$((mem_total - mem_available))
+
+            if [[ $mem_total -gt 0 ]]; then
+                mem_percent=$((mem_used * 100 / mem_total))
+            fi
+        fi
+    fi
+
+    echo "${mem_used}|${mem_total}|${mem_percent}"
 }
 
 # Create a progress bar
@@ -96,7 +185,7 @@ monitor() {
     }
 
     local gpu_name
-    gpu_name=$(get_gpu_name)
+    gpu_name=$(get_gpu_name "$gpu_path")
 
     # Use alternate screen buffer (like htop/vim)
     tput smcup 2>/dev/null
@@ -126,9 +215,11 @@ monitor() {
         local rocm_log="${rocm_info#*|}"
 
         if [[ "$rocm_status" == "active" ]]; then
-            echo -e "${BOLD}Backend:${RESET} ${GREEN}● ROCm Active${RESET}"
+            echo -e "${BOLD}Backend:${RESET} ${GREEN}● ROCm${RESET}"
+        elif [[ "$rocm_status" == "vulkan" ]]; then
+            echo -e "${BOLD}Backend:${RESET} ${BLUE}● Vulkan${RESET}"
         else
-            echo -e "${BOLD}Backend:${RESET} ${YELLOW}○ Checking...${RESET}"
+            echo -e "${BOLD}Backend:${RESET} ${YELLOW}○ Unknown${RESET}"
         fi
 
         if [[ -n "$rocm_log" ]]; then
@@ -184,7 +275,7 @@ monitor() {
         fi
 
         # For APUs, show GPU Memory (carved from RAM) and Shared Memory (GTT)
-        if is_apu "$gpu_name"; then
+        if is_apu "$gpu_path"; then
             echo -e "${BOLD}GPU Memory (dedicated):${RESET}"
         else
             echo -e "${BOLD}VRAM:${RESET}"
@@ -204,7 +295,7 @@ monitor() {
         fi
 
         # Show GTT (shared system memory) for APUs
-        if is_apu "$gpu_name"; then
+        if is_apu "$gpu_path"; then
             echo ""
             echo -e "${BOLD}Shared Memory (system RAM):${RESET}"
             printf "  "
@@ -220,6 +311,30 @@ monitor() {
             else
                 echo -e " ${GREEN}${gtt_used_fmt} / ${gtt_total_fmt}${RESET}"
             fi
+        fi
+        echo ""
+
+        # System RAM (from /proc/meminfo)
+        local ram_info
+        ram_info=$(get_system_ram)
+        local ram_used="${ram_info%%|*}"
+        local ram_rest="${ram_info#*|}"
+        local ram_total="${ram_rest%%|*}"
+        local ram_percent="${ram_rest#*|}"
+
+        echo -e "${BOLD}System RAM:${RESET}"
+        printf "  "
+        progress_bar "$ram_percent"
+
+        local ram_used_fmt=$(format_bytes $ram_used)
+        local ram_total_fmt=$(format_bytes $ram_total)
+
+        if [[ $ram_percent -gt 90 ]]; then
+            echo -e " ${RED}${ram_used_fmt} / ${ram_total_fmt}${RESET}"
+        elif [[ $ram_percent -gt 70 ]]; then
+            echo -e " ${YELLOW}${ram_used_fmt} / ${ram_total_fmt}${RESET}"
+        else
+            echo -e " ${GREEN}${ram_used_fmt} / ${ram_total_fmt}${RESET}"
         fi
         echo ""
 
