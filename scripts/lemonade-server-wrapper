@@ -22,30 +22,29 @@ if [ -d "$KFD_TOPOLOGY" ]; then
         # Parse gfx_target_version (format: AABBCC where AA=major, BB=minor, CC=stepping)
         major=$((gfx_version / 10000))
         minor=$(((gfx_version / 100) % 100))
-        gfx_arch="gfx${major}${minor}"
+        stepping=$((gfx_version % 100))
+        gfx_arch="gfx${major}${minor}${stepping}"
 
         # Check if architecture has a supported backend
-        case "$gfx_arch" in
-          gfx110[0-3])  # gfx110X - RDNA3
-            BACKEND="rocm"
-            echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch (gfx110X), using ROCm backend" >&2
-            ;;
-          gfx1150)  # Strix Point
-            BACKEND="rocm"
-            echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch, using ROCm backend" >&2
-            ;;
-          gfx1151)  # Strix Halo
-            BACKEND="rocm"
-            echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch, using ROCm backend" >&2
-            ;;
-          gfx120[0-3])  # gfx120X - RDNA4
-            BACKEND="rocm"
-            echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch (gfx120X), using ROCm backend" >&2
-            ;;
-          *)
-            echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch (unsupported for ROCm), using Vulkan backend" >&2
-            ;;
-        esac
+        if [ "$major" -eq 11 ] && [ "$minor" -eq 0 ]; then
+          # gfx110X - RDNA3 (gfx1100, gfx1101, gfx1102, gfx1103, etc.)
+          BACKEND="rocm"
+          echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch (gfx110X), using ROCm backend" >&2
+        elif [ "$major" -eq 11 ] && [ "$minor" -eq 5 ] && [ "$stepping" -eq 0 ]; then
+          # gfx1150 - Strix Point
+          BACKEND="rocm"
+          echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch, using ROCm backend" >&2
+        elif [ "$major" -eq 11 ] && [ "$minor" -eq 5 ] && [ "$stepping" -eq 1 ]; then
+          # gfx1151 - Strix Halo
+          BACKEND="rocm"
+          echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch, using ROCm backend" >&2
+        elif [ "$major" -eq 12 ] && [ "$minor" -eq 0 ]; then
+          # gfx120X - RDNA4 (gfx1200, gfx1201, etc.)
+          BACKEND="rocm"
+          echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch (gfx120X), using ROCm backend" >&2
+        else
+          echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch (no ROCm backend available), using Vulkan backend" >&2
+        fi
         break
       fi
     fi
