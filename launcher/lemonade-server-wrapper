@@ -1,0 +1,22 @@
+#!/bin/bash
+# Wrapper script to detect GPU and select appropriate backend
+# Prefers ROCm for AMD GPUs, falls back to Vulkan
+
+BACKEND="vulkan"  # default
+
+# Check for AMD GPU using lspci
+if lspci -nn 2>/dev/null | grep -iE "vga|display|3d" | grep -qi "1002:"; then
+  # AMD GPU detected, use ROCm
+  BACKEND="rocm"
+  echo "[Lemonade Wrapper] AMD GPU detected, using ROCm backend" >&2
+else
+  # Check again with a simpler pattern
+  if lspci 2>/dev/null | grep -qiE "AMD.*Radeon|ATI.*Radeon|AMD.*Graphics"; then
+    BACKEND="rocm"
+    echo "[Lemonade Wrapper] AMD GPU detected, using ROCm backend" >&2
+  else
+    echo "[Lemonade Wrapper] No AMD GPU detected, using Vulkan backend" >&2
+  fi
+fi
+
+exec "$SNAP/usr/local/bin/lemonade-server" "$@" --llamacpp "$BACKEND"
