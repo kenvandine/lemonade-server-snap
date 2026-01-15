@@ -115,7 +115,7 @@ parts:
 
   llamacpp-vulkan:
     plugin: nil
-    source: https://github.com/ggml-org/llama.cpp/releases/download/b7426/llama-b7426-bin-ubuntu-vulkan-x64.zip
+    source: https://github.com/ggml-org/llama.cpp/releases/download/b7744/llama-b7744-bin-ubuntu-vulkan-x64.zip
     source-type: zip
     override-build: |
       craftctl default
@@ -140,7 +140,7 @@ parts:
 
   llamacpp-cpu:
     plugin: nil
-    source: https://github.com/ggml-org/llama.cpp/releases/download/b7426/llama-b7426-bin-ubuntu-x64.zip
+    source: https://github.com/ggml-org/llama.cpp/releases/download/b7744/llama-b7744-bin-ubuntu-x64.zip
     source-type: zip
     override-build: |
       craftctl default
@@ -162,7 +162,7 @@ parts:
 
   llamacpp-rocm-gfx110x:
     plugin: nil
-    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1136/llama-b1136-ubuntu-rocm-gfx110X-x64.zip
+    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1160/llama-b1160-ubuntu-rocm-gfx110X-x64.zip
     source-type: zip
     override-build: |
       craftctl default
@@ -183,7 +183,7 @@ parts:
 
   llamacpp-rocm-gfx1150:
     plugin: nil
-    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1136/llama-b1136-ubuntu-rocm-gfx1150-x64.zip
+    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1160/llama-b1160-ubuntu-rocm-gfx1150-x64.zip
     source-type: zip
     override-build: |
       craftctl default
@@ -204,7 +204,7 @@ parts:
 
   llamacpp-rocm-gfx1151:
     plugin: nil
-    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1136/llama-b1136-ubuntu-rocm-gfx1151-x64.zip
+    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1160/llama-b1160-ubuntu-rocm-gfx1151-x64.zip
     source-type: zip
     override-build: |
       craftctl default
@@ -225,7 +225,7 @@ parts:
 
   llamacpp-rocm-gfx120x:
     plugin: nil
-    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1136/llama-b1136-ubuntu-rocm-gfx120X-x64.zip
+    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1160/llama-b1160-ubuntu-rocm-gfx120X-x64.zip
     source-type: zip
     override-build: |
       craftctl default
