@@ -1,8 +1,14 @@
 #!/bin/bash
 # Wrapper script to detect GPU and select appropriate backend
-# Prefers ROCm for AMD GPUs, falls back to Vulkan
+# Prefers ROCm for AMD GPUs with supported architectures, falls back to Vulkan
 
 BACKEND="vulkan"  # default
+
+# Supported ROCm architectures (must have matching backend binaries)
+# gfx110X = RDNA3 (RX 7000 series, 780M/760M APUs) - gfx_target_version 110000-110399
+# gfx1150 = Strix Point (Radeon 880M/890M) - gfx_target_version 115000
+# gfx1151 = Strix Halo (Radeon 8050S/8060S) - gfx_target_version 115100
+# gfx120X = RDNA4 (RX 9000 series) - gfx_target_version 120000-120399
 
 # Check for AMD GPU using KFD sysfs interface (kernel ROCm driver)
 KFD_TOPOLOGY="/sys/class/kfd/kfd/topology/nodes"
@@ -13,16 +19,41 @@ if [ -d "$KFD_TOPOLOGY" ]; then
       # Check for gfx_target_version - non-zero indicates a ROCm-capable AMD GPU
       gfx_version=$(grep "^gfx_target_version " "${node}properties" 2>/dev/null | awk '{print $2}')
       if [ -n "$gfx_version" ] && [ "$gfx_version" != "0" ]; then
-        BACKEND="rocm"
-        echo "[Lemonade Wrapper] AMD GPU detected via KFD sysfs (gfx_target_version: $gfx_version), using ROCm backend" >&2
+        # Parse gfx_target_version (format: AABBCC where AA=major, BB=minor, CC=stepping)
+        major=$((gfx_version / 10000))
+        minor=$(((gfx_version / 100) % 100))
+        gfx_arch="gfx${major}${minor}"
+
+        # Check if architecture has a supported backend
+        case "$gfx_arch" in
+          gfx110[0-3])  # gfx110X - RDNA3
+            BACKEND="rocm"
+            echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch (gfx110X), using ROCm backend" >&2
+            ;;
+          gfx1150)  # Strix Point
+            BACKEND="rocm"
+            echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch, using ROCm backend" >&2
+            ;;
+          gfx1151)  # Strix Halo
+            BACKEND="rocm"
+            echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch, using ROCm backend" >&2
+            ;;
+          gfx120[0-3])  # gfx120X - RDNA4
+            BACKEND="rocm"
+            echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch (gfx120X), using ROCm backend" >&2
+            ;;
+          *)
+            echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch (unsupported for ROCm), using Vulkan backend" >&2
+            ;;
+        esac
         break
       fi
     fi
   done
 fi
 
-if [ "$BACKEND" = "vulkan" ]; then
-  echo "[Lemonade Wrapper] No ROCm-capable AMD GPU detected, using Vulkan backend" >&2
+if [ "$BACKEND" = "vulkan" ] && [ -z "$gfx_version" ]; then
+  echo "[Lemonade Wrapper] No AMD GPU detected, using Vulkan backend" >&2
 fi
 
 exec "$SNAP/usr/local/bin/lemonade-server" "$@" --llamacpp "$BACKEND"
