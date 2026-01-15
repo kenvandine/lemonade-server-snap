@@ -31,25 +31,14 @@ jobs:
           # Function to get latest release tag from GitHub API
           get_latest_release() {
             local repo="$1"
-            local current="$2"
-            local filter="${3:-}"
 
             # Get releases JSON
             local releases
             releases=$(curl -s -H "Authorization: token $GH_TOKEN" \
               "https://api.github.com/repos/${repo}/releases?per_page=20")
 
-            # Extract latest non-prerelease tag (or apply filter if provided)
-            local latest
-            if [ -n "$filter" ]; then
-              latest=$(echo "$releases" | jq -r \
-                "[.[] | select(.prerelease == false and (.tag_name | test(\"$filter\")))] | .[0].tag_name // empty")
-            else
-              latest=$(echo "$releases" | jq -r \
-                '[.[] | select(.prerelease == false)] | .[0].tag_name // empty')
-            fi
-
-            echo "$latest"
+            # Extract latest non-prerelease tag
+            echo "$releases" | jq -r '[.[] | select(.prerelease == false)] | .[0].tag_name // empty'
           }
 
           # Function to extract version number from tag
@@ -61,7 +50,7 @@ jobs:
 
           echo "=== Checking lemonade-server (lemonade-sdk/lemonade) ==="
           CURRENT_LEMONADE=$(grep '^version:' "$SNAPCRAFT_FILE" | sed 's/version: *"\?\([^"]*\)"\?/\1/')
-          LATEST_LEMONADE_TAG=$(get_latest_release "lemonade-sdk/lemonade" "$CURRENT_LEMONADE")
+          LATEST_LEMONADE_TAG=$(get_latest_release "lemonade-sdk/lemonade")
           LATEST_LEMONADE=$(extract_version "$LATEST_LEMONADE_TAG")
 
           echo "Current: $CURRENT_LEMONADE"
@@ -74,40 +63,69 @@ jobs:
             UPDATE_SUMMARY="${UPDATE_SUMMARY}- lemonade-server: $CURRENT_LEMONADE -> $LATEST_LEMONADE\n"
           fi
 
+          # Fetch backend versions from lemonade's backend_versions.json
+          # Use the latest release tag (or current if no update)
+          LEMONADE_REF="${LATEST_LEMONADE_TAG:-v$CURRENT_LEMONADE}"
           echo ""
-          echo "=== Checking llama.cpp (ggml-org/llama.cpp) ==="
+          echo "=== Fetching backend versions from lemonade $LEMONADE_REF ==="
+          BACKEND_VERSIONS_URL="https://raw.githubusercontent.com/lemonade-sdk/lemonade/${LEMONADE_REF}/src/cpp/resources/backend_versions.json"
+          BACKEND_VERSIONS=$(curl -s "$BACKEND_VERSIONS_URL")
+
+          if [ -z "$BACKEND_VERSIONS" ] || echo "$BACKEND_VERSIONS" | grep -q "404"; then
+            echo "Warning: Could not fetch backend_versions.json, trying main branch"
+            BACKEND_VERSIONS=$(curl -s "https://raw.githubusercontent.com/lemonade-sdk/lemonade/main/src/cpp/resources/backend_versions.json")
+          fi
+
+          echo "Backend versions JSON:"
+          echo "$BACKEND_VERSIONS" | jq .
+
+          # Extract versions from JSON
+          UPSTREAM_VULKAN=$(echo "$BACKEND_VERSIONS" | jq -r '.llamacpp.vulkan')
+          UPSTREAM_CPU=$(echo "$BACKEND_VERSIONS" | jq -r '.llamacpp.cpu')
+          UPSTREAM_ROCM=$(echo "$BACKEND_VERSIONS" | jq -r '.llamacpp.rocm')
+
+          echo ""
+          echo "=== Checking llama.cpp Vulkan/CPU backends ==="
           # Extract current version from source URL (e.g., b7426)
-          CURRENT_LLAMACPP=$(grep -oP 'llama\.cpp/releases/download/\Kb[0-9]+' "$SNAPCRAFT_FILE" | head -1)
-          LATEST_LLAMACPP_TAG=$(get_latest_release "ggml-org/llama.cpp" "$CURRENT_LLAMACPP" "^b[0-9]+$")
-          LATEST_LLAMACPP=$(echo "$LATEST_LLAMACPP_TAG" | sed 's/^b//')
-          CURRENT_LLAMACPP_NUM=$(echo "$CURRENT_LLAMACPP" | sed 's/^b//')
+          CURRENT_LLAMACPP=$(grep -oP 'ggml-org/llama\.cpp/releases/download/\Kb[0-9]+' "$SNAPCRAFT_FILE" | head -1)
 
-          echo "Current: b$CURRENT_LLAMACPP_NUM"
-          echo "Latest:  $LATEST_LLAMACPP_TAG"
+          echo "Current: $CURRENT_LLAMACPP"
+          echo "Upstream (vulkan): $UPSTREAM_VULKAN"
+          echo "Upstream (cpu): $UPSTREAM_CPU"
 
-          if [ -n "$LATEST_LLAMACPP_TAG" ] && [ "$LATEST_LLAMACPP_TAG" != "$CURRENT_LLAMACPP" ]; then
-            echo "Update available!"
-            # Update all llama.cpp URLs (vulkan and cpu)
-            sed -i "s|llama\.cpp/releases/download/b[0-9]*/llama-b[0-9]*|llama.cpp/releases/download/${LATEST_LLAMACPP_TAG}/llama-${LATEST_LLAMACPP_TAG}|g" "$SNAPCRAFT_FILE"
+          # Update Vulkan backend if different
+          if [ -n "$UPSTREAM_VULKAN" ] && [ "$UPSTREAM_VULKAN" != "$CURRENT_LLAMACPP" ]; then
+            echo "Vulkan backend update available!"
+            # Update vulkan URL specifically
+            sed -i "s|ggml-org/llama\.cpp/releases/download/b[0-9]*/llama-b[0-9]*-bin-ubuntu-vulkan|ggml-org/llama.cpp/releases/download/${UPSTREAM_VULKAN}/llama-${UPSTREAM_VULKAN}-bin-ubuntu-vulkan|g" "$SNAPCRAFT_FILE"
             UPDATES_FOUND=true
-            UPDATE_SUMMARY="${UPDATE_SUMMARY}- llama.cpp: $CURRENT_LLAMACPP -> $LATEST_LLAMACPP_TAG\n"
+            UPDATE_SUMMARY="${UPDATE_SUMMARY}- llama.cpp vulkan: $CURRENT_LLAMACPP -> $UPSTREAM_VULKAN\n"
+          fi
+
+          # Update CPU backend if different
+          CURRENT_CPU=$(grep -oP 'llama-b[0-9]+-bin-ubuntu-x64' "$SNAPCRAFT_FILE" | head -1 | grep -oP 'b[0-9]+')
+          if [ -n "$UPSTREAM_CPU" ] && [ "$UPSTREAM_CPU" != "$CURRENT_CPU" ]; then
+            echo "CPU backend update available!"
+            # Update cpu URL specifically
+            sed -i "s|ggml-org/llama\.cpp/releases/download/b[0-9]*/llama-b[0-9]*-bin-ubuntu-x64|ggml-org/llama.cpp/releases/download/${UPSTREAM_CPU}/llama-${UPSTREAM_CPU}-bin-ubuntu-x64|g" "$SNAPCRAFT_FILE"
+            UPDATES_FOUND=true
+            UPDATE_SUMMARY="${UPDATE_SUMMARY}- llama.cpp cpu: $CURRENT_CPU -> $UPSTREAM_CPU\n"
           fi
 
           echo ""
-          echo "=== Checking llamacpp-rocm (lemonade-sdk/llamacpp-rocm) ==="
+          echo "=== Checking llamacpp-rocm backend ==="
           # Extract current version from source URL (e.g., b1136)
           CURRENT_ROCM=$(grep -oP 'llamacpp-rocm/releases/download/\Kb[0-9]+' "$SNAPCRAFT_FILE" | head -1)
-          LATEST_ROCM_TAG=$(get_latest_release "lemonade-sdk/llamacpp-rocm" "$CURRENT_ROCM" "^b[0-9]+$")
 
           echo "Current: $CURRENT_ROCM"
-          echo "Latest:  $LATEST_ROCM_TAG"
+          echo "Upstream: $UPSTREAM_ROCM"
 
-          if [ -n "$LATEST_ROCM_TAG" ] && [ "$LATEST_ROCM_TAG" != "$CURRENT_ROCM" ]; then
-            echo "Update available!"
+          if [ -n "$UPSTREAM_ROCM" ] && [ "$UPSTREAM_ROCM" != "$CURRENT_ROCM" ]; then
+            echo "ROCm backend update available!"
             # Update all rocm URLs
-            sed -i "s|llamacpp-rocm/releases/download/b[0-9]*/llama-b[0-9]*|llamacpp-rocm/releases/download/${LATEST_ROCM_TAG}/llama-${LATEST_ROCM_TAG}|g" "$SNAPCRAFT_FILE"
+            sed -i "s|llamacpp-rocm/releases/download/b[0-9]*/llama-b[0-9]*|llamacpp-rocm/releases/download/${UPSTREAM_ROCM}/llama-${UPSTREAM_ROCM}|g" "$SNAPCRAFT_FILE"
             UPDATES_FOUND=true
-            UPDATE_SUMMARY="${UPDATE_SUMMARY}- llamacpp-rocm: $CURRENT_ROCM -> $LATEST_ROCM_TAG\n"
+            UPDATE_SUMMARY="${UPDATE_SUMMARY}- llamacpp-rocm: $CURRENT_ROCM -> $UPSTREAM_ROCM\n"
           fi
 
           echo ""
