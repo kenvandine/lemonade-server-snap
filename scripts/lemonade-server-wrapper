@@ -19,22 +19,22 @@ if [ -d "$KFD_TOPOLOGY" ]; then
       # Check for gfx_target_version - non-zero indicates a ROCm-capable AMD GPU
       gfx_version=$(grep "^gfx_target_version " "${node}properties" 2>/dev/null | awk '{print $2}')
       if [ -n "$gfx_version" ] && [ "$gfx_version" != "0" ]; then
-        # Parse gfx_target_version (format: AABBCC where AA=major, BB=minor, CC=stepping)
+        # Parse gfx_target_version (format: AABBCC where AA=major, BB=minor, CC=revision)
         major=$((gfx_version / 10000))
         minor=$(((gfx_version / 100) % 100))
-        stepping=$((gfx_version % 100))
-        gfx_arch="gfx${major}${minor}${stepping}"
+        revision=$((gfx_version % 100))
+        gfx_arch="gfx${major}${minor}${revision}"
 
         # Check if architecture has a supported backend
         if [ "$major" -eq 11 ] && [ "$minor" -eq 0 ]; then
           # gfx110X - RDNA3 (gfx1100, gfx1101, gfx1102, gfx1103, etc.)
           BACKEND="rocm"
           echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch (gfx110X), using ROCm backend" >&2
-        elif [ "$major" -eq 11 ] && [ "$minor" -eq 5 ] && [ "$stepping" -eq 0 ]; then
+        elif [ "$major" -eq 11 ] && [ "$minor" -eq 5 ] && [ "$revision" -eq 0 ]; then
           # gfx1150 - Strix Point
           BACKEND="rocm"
           echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch, using ROCm backend" >&2
-        elif [ "$major" -eq 11 ] && [ "$minor" -eq 5 ] && [ "$stepping" -eq 1 ]; then
+        elif [ "$major" -eq 11 ] && [ "$minor" -eq 5 ] && [ "$revision" -eq 1 ]; then
           # gfx1151 - Strix Halo
           BACKEND="rocm"
           echo "[Lemonade Wrapper] AMD GPU detected: $gfx_arch, using ROCm backend" >&2
