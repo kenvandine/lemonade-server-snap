@@ -1,0 +1,144 @@
+name: Check Upstream Releases
+
+on:
+  schedule:
+    # Run daily at 6:00 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-releases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for upstream updates
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+
+          SNAPCRAFT_FILE="snap/snapcraft.yaml"
+          UPDATES_FOUND=false
+          UPDATE_SUMMARY=""
+
+          # Function to get latest release tag from GitHub API
+          get_latest_release() {
+            local repo="$1"
+            local current="$2"
+            local filter="${3:-}"
+
+            # Get releases JSON
+            local releases
+            releases=$(curl -s -H "Authorization: token $GH_TOKEN" \
+              "https://api.github.com/repos/${repo}/releases?per_page=20")
+
+            # Extract latest non-prerelease tag (or apply filter if provided)
+            local latest
+            if [ -n "$filter" ]; then
+              latest=$(echo "$releases" | jq -r \
+                "[.[] | select(.prerelease == false and (.tag_name | test(\"$filter\")))] | .[0].tag_name // empty")
+            else
+              latest=$(echo "$releases" | jq -r \
+                '[.[] | select(.prerelease == false)] | .[0].tag_name // empty')
+            fi
+
+            echo "$latest"
+          }
+
+          # Function to extract version number from tag
+          extract_version() {
+            local tag="$1"
+            # Remove common prefixes like 'v', 'b', 'release-'
+            echo "$tag" | sed -E 's/^(v|b|release-)//'
+          }
+
+          echo "=== Checking lemonade-server (lemonade-sdk/lemonade) ==="
+          CURRENT_LEMONADE=$(grep '^version:' "$SNAPCRAFT_FILE" | sed 's/version: *"\?\([^"]*\)"\?/\1/')
+          LATEST_LEMONADE_TAG=$(get_latest_release "lemonade-sdk/lemonade" "$CURRENT_LEMONADE")
+          LATEST_LEMONADE=$(extract_version "$LATEST_LEMONADE_TAG")
+
+          echo "Current: $CURRENT_LEMONADE"
+          echo "Latest:  $LATEST_LEMONADE (tag: $LATEST_LEMONADE_TAG)"
+
+          if [ -n "$LATEST_LEMONADE" ] && [ "$LATEST_LEMONADE" != "$CURRENT_LEMONADE" ]; then
+            echo "Update available!"
+            sed -i "s/^version: .*/version: \"$LATEST_LEMONADE\"/" "$SNAPCRAFT_FILE"
+            UPDATES_FOUND=true
+            UPDATE_SUMMARY="${UPDATE_SUMMARY}- lemonade-server: $CURRENT_LEMONADE -> $LATEST_LEMONADE\n"
+          fi
+
+          echo ""
+          echo "=== Checking llama.cpp (ggml-org/llama.cpp) ==="
+          # Extract current version from source URL (e.g., b7426)
+          CURRENT_LLAMACPP=$(grep -oP 'llama\.cpp/releases/download/\Kb[0-9]+' "$SNAPCRAFT_FILE" | head -1)
+          LATEST_LLAMACPP_TAG=$(get_latest_release "ggml-org/llama.cpp" "$CURRENT_LLAMACPP" "^b[0-9]+$")
+          LATEST_LLAMACPP=$(echo "$LATEST_LLAMACPP_TAG" | sed 's/^b//')
+          CURRENT_LLAMACPP_NUM=$(echo "$CURRENT_LLAMACPP" | sed 's/^b//')
+
+          echo "Current: b$CURRENT_LLAMACPP_NUM"
+          echo "Latest:  $LATEST_LLAMACPP_TAG"
+
+          if [ -n "$LATEST_LLAMACPP_TAG" ] && [ "$LATEST_LLAMACPP_TAG" != "$CURRENT_LLAMACPP" ]; then
+            echo "Update available!"
+            # Update all llama.cpp URLs (vulkan and cpu)
+            sed -i "s|llama\.cpp/releases/download/b[0-9]*/llama-b[0-9]*|llama.cpp/releases/download/${LATEST_LLAMACPP_TAG}/llama-${LATEST_LLAMACPP_TAG}|g" "$SNAPCRAFT_FILE"
+            UPDATES_FOUND=true
+            UPDATE_SUMMARY="${UPDATE_SUMMARY}- llama.cpp: $CURRENT_LLAMACPP -> $LATEST_LLAMACPP_TAG\n"
+          fi
+
+          echo ""
+          echo "=== Checking llamacpp-rocm (lemonade-sdk/llamacpp-rocm) ==="
+          # Extract current version from source URL (e.g., b1136)
+          CURRENT_ROCM=$(grep -oP 'llamacpp-rocm/releases/download/\Kb[0-9]+' "$SNAPCRAFT_FILE" | head -1)
+          LATEST_ROCM_TAG=$(get_latest_release "lemonade-sdk/llamacpp-rocm" "$CURRENT_ROCM" "^b[0-9]+$")
+
+          echo "Current: $CURRENT_ROCM"
+          echo "Latest:  $LATEST_ROCM_TAG"
+
+          if [ -n "$LATEST_ROCM_TAG" ] && [ "$LATEST_ROCM_TAG" != "$CURRENT_ROCM" ]; then
+            echo "Update available!"
+            # Update all rocm URLs
+            sed -i "s|llamacpp-rocm/releases/download/b[0-9]*/llama-b[0-9]*|llamacpp-rocm/releases/download/${LATEST_ROCM_TAG}/llama-${LATEST_ROCM_TAG}|g" "$SNAPCRAFT_FILE"
+            UPDATES_FOUND=true
+            UPDATE_SUMMARY="${UPDATE_SUMMARY}- llamacpp-rocm: $CURRENT_ROCM -> $LATEST_ROCM_TAG\n"
+          fi
+
+          echo ""
+          echo "=== Summary ==="
+          if [ "$UPDATES_FOUND" = true ]; then
+            echo "Updates found!"
+            echo -e "$UPDATE_SUMMARY"
+            echo "updates_found=true" >> $GITHUB_OUTPUT
+            # Escape newlines for GitHub Actions
+            UPDATE_SUMMARY_ESCAPED=$(echo -e "$UPDATE_SUMMARY" | sed ':a;N;$!ba;s/\n/\\n/g')
+            echo "update_summary=$UPDATE_SUMMARY_ESCAPED" >> $GITHUB_OUTPUT
+          else
+            echo "All dependencies are up to date."
+            echo "updates_found=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.check.outputs.updates_found == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Update upstream dependencies"
+          title: "Update upstream dependencies"
+          body: |
+            Automated update of upstream dependencies:
+
+            ${{ steps.check.outputs.update_summary }}
+
+            This PR was automatically created by the daily upstream check workflow.
+          branch: update-upstream-deps
+          delete-branch: true
+          labels: |
+            dependencies
+            automated
