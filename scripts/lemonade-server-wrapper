@@ -4,19 +4,25 @@
 
 BACKEND="vulkan"  # default
 
-# Check for AMD GPU using lspci
-if lspci -nn 2>/dev/null | grep -iE "vga|display|3d" | grep -qi "1002:"; then
-  # AMD GPU detected, use ROCm
-  BACKEND="rocm"
-  echo "[Lemonade Wrapper] AMD GPU detected, using ROCm backend" >&2
-else
-  # Check again with a simpler pattern
-  if lspci 2>/dev/null | grep -qiE "AMD.*Radeon|ATI.*Radeon|AMD.*Graphics"; then
-    BACKEND="rocm"
-    echo "[Lemonade Wrapper] AMD GPU detected, using ROCm backend" >&2
-  else
-    echo "[Lemonade Wrapper] No AMD GPU detected, using Vulkan backend" >&2
-  fi
+# Check for AMD GPU using KFD sysfs interface (kernel ROCm driver)
+KFD_TOPOLOGY="/sys/class/kfd/kfd/topology/nodes"
+
+if [ -d "$KFD_TOPOLOGY" ]; then
+  for node in "$KFD_TOPOLOGY"/*/; do
+    if [ -f "${node}properties" ]; then
+      # Check for gfx_target_version - non-zero indicates a ROCm-capable AMD GPU
+      gfx_version=$(grep "^gfx_target_version " "${node}properties" 2>/dev/null | awk '{print $2}')
+      if [ -n "$gfx_version" ] && [ "$gfx_version" != "0" ]; then
+        BACKEND="rocm"
+        echo "[Lemonade Wrapper] AMD GPU detected via KFD sysfs (gfx_target_version: $gfx_version), using ROCm backend" >&2
+        break
+      fi
+    fi
+  done
+fi
+
+if [ "$BACKEND" = "vulkan" ]; then
+  echo "[Lemonade Wrapper] No ROCm-capable AMD GPU detected, using Vulkan backend" >&2
 fi
 
 exec "$SNAP/usr/local/bin/lemonade-server" "$@" --llamacpp "$BACKEND"
