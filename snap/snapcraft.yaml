@@ -110,6 +110,8 @@ apps:
 parts:
   deps:
     plugin: nil
+    builds-packages:
+      - curl
     stage-packages:
       - libgomp1
       - libatomic1
