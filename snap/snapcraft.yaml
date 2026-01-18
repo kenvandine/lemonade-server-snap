@@ -50,6 +50,10 @@ platforms:
 layout:
   /usr/local/share/lemonade-server:
     symlink: $SNAP/usr/local/share/lemonade-server
+  /usr/share/hwdata:
+    symlink: $SNAP/usr/share/hwdata
+  /usr/share/misc/pci.ids:
+    bind-file: $SNAP/usr/share/misc/pci.ids
 
 apps:
   metrics:
@@ -71,6 +75,8 @@ apps:
       - network
       - network-bind
       - opengl
+      - hardware-observe
+      - system-observe
     environment:
       LD_LIBRARY_PATH: "$SNAP/usr/local/share/lemonade-server:$SNAP/usr/local/lib/llamacpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
       PATH: "$SNAP/usr/local/bin:$PATH"
@@ -91,6 +97,7 @@ apps:
       - opengl
       - process-control
       - hardware-observe
+      - system-observe
     environment:
       LD_LIBRARY_PATH: "$SNAP/usr/local/share/lemonade-server:$SNAP/usr/local/lib/llamacpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
       PATH: "$SNAP/usr/local/bin:$PATH"
@@ -108,6 +115,13 @@ parts:
       - libatomic1
       - libcurl4t64
       - curl # for metrics
+      - hwdata # PCI ID database for lspci device name resolution
+      - pciutils # lspci for GPU detection
+    override-build: |
+      craftctl default
+      # Download latest PCI ID database (hwdata package version is outdated)
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/misc
+      curl -sL https://pci-ids.ucw.cz/v2.2/pci.ids -o $CRAFT_PART_INSTALL/usr/share/misc/pci.ids
 
   lemonade-server:
     plugin: dump
@@ -251,8 +265,6 @@ parts:
       - llamacpp-rocm-gfx1150
       - llamacpp-rocm-gfx1151
       - llamacpp-rocm-gfx120x
-    stage-packages:
-      - pciutils
     override-build: |
       mkdir -p $CRAFT_PART_INSTALL/usr/local/bin
       cat > $CRAFT_PART_INSTALL/usr/local/bin/llama-server-rocm << 'EOF'
