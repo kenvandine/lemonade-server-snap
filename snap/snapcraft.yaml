@@ -55,6 +55,15 @@ layout:
   /usr/share/misc/pci.ids:
     bind-file: $SNAP/usr/share/misc/pci.ids
 
+slots:
+  # Adds a pseudo content interface to allow clients to express their
+  # runtime dependency on lemonade-server
+  install-lemonade-runtime-dependency:
+    interface: content
+    content: foo
+    read:
+      - $SNAP/meta/snap.yaml
+
 apps:
   metrics:
     command: bin/metrics
@@ -110,7 +119,7 @@ apps:
 parts:
   deps:
     plugin: nil
-    builds-packages:
+    build-packages:
       - curl
     stage-packages:
       - libgomp1
@@ -120,14 +129,14 @@ parts:
       - hwdata # PCI ID database for lspci device name resolution
       - pciutils # lspci for GPU detection
     override-build: |
-       set +u # For unbound variables
-       # workaround for build.snapcraft.io builds
-       # https://bugs.launchpad.net/bugs/1886861
-       if [ -n "$http_proxy" ]; then
-         export ELECTRON_GET_USE_PROXY=1
-         export GLOBAL_AGENT_HTTP_PROXY="${http_proxy}"
-         export GLOBAL_AGENT_HTTPS_PROXY="${http_proxy}"
-       fi
+      set +u # For unbound variables
+      # workaround for build.snapcraft.io builds
+      # https://bugs.launchpad.net/bugs/1886861
+      if [ -n "$http_proxy" ]; then
+        export ELECTRON_GET_USE_PROXY=1
+        export GLOBAL_AGENT_HTTP_PROXY="${http_proxy}"
+        export GLOBAL_AGENT_HTTPS_PROXY="${http_proxy}"
+      fi
 
       craftctl default
       # Download latest PCI ID database (hwdata package version is outdated)
