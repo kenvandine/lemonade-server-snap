@@ -1,5 +1,5 @@
 name: lemonade-server
-version: "9.1.3"
+version: "9.1.4"
 base: core24
 summary: Local AI server with OpenAI-compatible API
 title: Lemonade Server
@@ -149,60 +149,39 @@ parts:
 
   llamacpp-vulkan:
     plugin: nil
-    source: https://github.com/ggml-org/llama.cpp/releases/download/b7426/llama-b7426-bin-ubuntu-vulkan-x64.zip
-    source-type: zip
+    source: https://github.com/ggml-org/llama.cpp/releases/download/b7788/llama-b7788-bin-ubuntu-vulkan-x64.tar.gz
+    source-type: tar
     override-build: |
       craftctl default
       mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/llamacpp/vulkan
       DEST=$CRAFT_PART_INSTALL/usr/local/lib/llamacpp/vulkan
       # Copy all files
-      cp -a build/bin/* $DEST/
-      # Fix broken symlinks (zip stores them as text files with target name)
-      cd $DEST
-      for f in *.so *.so.[0-9]*; do
-        if [ -f "$f" ] && [ $(stat -c%s "$f") -lt 200 ]; then
-          target=$(cat "$f" 2>/dev/null | tr -d '\0')
-          if [ -f "$target" ]; then
-            rm "$f"
-            ln -sf "$target" "$f"
-          fi
-        fi
-      done
+      cp -a */* $DEST/ || true
       chmod +x $DEST/llama-server
     stage-packages:
       - libvulkan1
 
   llamacpp-cpu:
     plugin: nil
-    source: https://github.com/ggml-org/llama.cpp/releases/download/b7426/llama-b7426-bin-ubuntu-x64.zip
-    source-type: zip
+    source: https://github.com/ggml-org/llama.cpp/releases/download/b7788/llama-b7788-bin-ubuntu-x64.tar.gz
+    source-type: tar
     override-build: |
       craftctl default
       mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/llamacpp/cpu
       DEST=$CRAFT_PART_INSTALL/usr/local/lib/llamacpp/cpu
-      cp -a build/bin/* $DEST/
-      # Fix broken symlinks
-      cd $DEST
-      for f in *.so *.so.[0-9]*; do
-        if [ -f "$f" ] && [ $(stat -c%s "$f") -lt 200 ]; then
-          target=$(cat "$f" 2>/dev/null | tr -d '\0')
-          if [ -f "$target" ]; then
-            rm "$f"
-            ln -sf "$target" "$f"
-          fi
-        fi
-      done
+      cp -a */* $DEST/ || true
       chmod +x $DEST/llama-server
 
   llamacpp-rocm-gfx110x:
     plugin: nil
-    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1136/llama-b1136-ubuntu-rocm-gfx110X-x64.zip
+    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1162/llama-b1162-ubuntu-rocm-gfx110X-x64.zip
     source-type: zip
     override-build: |
       craftctl default
       mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/llamacpp/rocm/gfx110X
       DEST=$CRAFT_PART_INSTALL/usr/local/lib/llamacpp/rocm/gfx110X
       cp -a * $DEST/ || true
+      # Fix broken symlinks (zip stores them as text files with target name)
       cd $DEST
       for f in *.so *.so.[0-9]*; do
         if [ -f "$f" ] && [ $(stat -c%s "$f") -lt 200 ]; then
@@ -217,7 +196,7 @@ parts:
 
   llamacpp-rocm-gfx1150:
     plugin: nil
-    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1136/llama-b1136-ubuntu-rocm-gfx1150-x64.zip
+    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1162/llama-b1162-ubuntu-rocm-gfx1150-x64.zip
     source-type: zip
     override-build: |
       craftctl default
@@ -238,7 +217,7 @@ parts:
 
   llamacpp-rocm-gfx1151:
     plugin: nil
-    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1136/llama-b1136-ubuntu-rocm-gfx1151-x64.zip
+    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1162/llama-b1162-ubuntu-rocm-gfx1151-x64.zip
     source-type: zip
     override-build: |
       craftctl default
@@ -259,7 +238,7 @@ parts:
 
   llamacpp-rocm-gfx120x:
     plugin: nil
-    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1136/llama-b1136-ubuntu-rocm-gfx120X-x64.zip
+    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1162/llama-b1162-ubuntu-rocm-gfx120X-x64.zip
     source-type: zip
     override-build: |
       craftctl default
