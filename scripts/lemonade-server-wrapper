@@ -2,6 +2,14 @@
 # Wrapper script to detect GPU and select appropriate backend
 # Prefers ROCm for AMD GPUs with supported architectures, falls back to Vulkan
 
+# Read snap configuration for host and port
+PORT=$(snapctl get port)
+IP_ADDRESS=$(snapctl get ip-address)
+
+# Use defaults if not set
+PORT=${PORT:-8000}
+IP_ADDRESS=${IP_ADDRESS:-127.0.0.1}
+
 BACKEND="vulkan"  # default
 
 # Supported ROCm architectures (must have matching backend binaries)
@@ -55,4 +63,4 @@ if [ "$BACKEND" = "vulkan" ] && [ -z "$gfx_version" ]; then
   echo "[Lemonade Wrapper] No AMD GPU detected, using Vulkan backend" >&2
 fi
 
-exec "$SNAP/usr/local/bin/lemonade-server" "$@" --llamacpp "$BACKEND"
+exec "$SNAP/usr/local/bin/lemonade-server" "$@" --llamacpp "$BACKEND" --host "$IP_ADDRESS" --port "$PORT"
