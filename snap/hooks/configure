@@ -1,4 +1,26 @@
 #!/bin/bash
 set -e
 snapctl stop "$SNAP_INSTANCE_NAME"
+
+echo "Getting configuration value for 'port'"
+output=$(snapctl get port)
+if [ -z $output ]; then
+	echo "No value for port, resetting to default"
+    snapctl set port=8000
+fi
+
+echo "Getting configuration value for 'ip-address'"
+output=$(snapctl get ip-address)
+if [ -z $output ]; then
+	echo "No value for ip-address, resetting to default"
+    snapctl set ip-address=127.0.0.1
+fi
+
+echo "Getting configuration value for 'log-level'"
+output=$(snapctl get log-level)
+if [ -z $output ]; then
+	echo "No value for log-level, resetting to default"
+    snapctl set log-level=info
+fi
+
 snapctl start "$SNAP_INSTANCE_NAME"
