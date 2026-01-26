@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+snapctl set port=8000
+snapctl set ip-address=127.0.0.1
+snapctl set log-level=info

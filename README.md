@@ -93,6 +93,23 @@ curl http://localhost:8000/api/v1/models
 
 ## Configuration
 
+### Snap settings
+
+You can configure the server using snap settings:
+
+```bash
+# Set the server port (default: 8000)
+sudo snap set lemonade-server port=9000
+
+# Set the IP address to bind to (default: 127.0.0.1)
+sudo snap set lemonade-server ip-address=0.0.0.0
+
+# Set the log level (default: info, options: debug, info, warn)
+sudo snap set lemonade-server log-level=debug
+```
+
+Changes take effect after the service restarts automatically.
+
 ### Model cache location
 
 Models are cached in `/var/snap/lemonade-server/common/.cache/huggingface/`.
