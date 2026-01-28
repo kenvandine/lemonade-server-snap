@@ -1,0 +1,23 @@
+name: Snap Publish Release
+
+on:
+  push:
+  workflow_dispatch:   
+
+jobs:
+  stable:
+    runs-on: ubuntu-24.04
+    if: github.ref == 'refs/heads/stable' # Run only for the 'stable' branch
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+    - uses: canonical/action-build@v1.3.0
+      id: build
+    - uses: snapcore/action-publish@v1
+      env:
+        SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
+      with:
+        snap: ${{ steps.build.outputs.snap }}
+        release: candidate
