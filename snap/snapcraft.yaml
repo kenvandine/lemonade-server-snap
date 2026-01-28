@@ -1,5 +1,4 @@
 name: lemonade-server
-version: "9.1.4"
 base: core24
 summary: Local AI server with OpenAI-compatible API
 title: Lemonade Server
@@ -156,6 +155,11 @@ parts:
       - pkg-config
     override-pull: |
       craftctl default
+      VERSION=$(craftctl get version)
+      if [ -z $VERSION ]; then
+        VERSION=$(git describe --tags --abbrev=10)
+        craftctl set version=$VERSION
+      fi
     override-build: |
       craftctl default
       mkdir -p $CRAFT_PART_INSTALL/usr/{bin,share}
