@@ -1,0 +1,86 @@
+name: Check Upstream Releases
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Run daily at 6 AM UTC
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: stable
+
+      - name: Get latest upstream tag
+        id: upstream
+        run: |
+          # Fetch tags from upstream repository
+          LATEST_TAG=$(git ls-remote --tags --sort=-v:refname \
+            https://github.com/lemonade-sdk/lemonade.git \
+            | grep -oP 'refs/tags/\K[^{}]+$' \
+            | head -n 1)
+
+          echo "Latest upstream tag: $LATEST_TAG"
+          echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+
+      - name: Get current source-tag from snapcraft.yaml
+        id: current
+        run: |
+          # Extract current source-tag if it exists
+          CURRENT_TAG=$(grep -oP '^\s+source-tag:\s*\K.*' snap/snapcraft.yaml || echo "")
+          echo "Current source-tag: $CURRENT_TAG"
+          echo "tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+
+      - name: Check if update is needed
+        id: check
+        run: |
+          if [ "${{ steps.upstream.outputs.tag }}" != "${{ steps.current.outputs.tag }}" ]; then
+            echo "Update needed: ${{ steps.current.outputs.tag }} -> ${{ steps.upstream.outputs.tag }}"
+            echo "update_needed=true" >> $GITHUB_OUTPUT
+          else
+            echo "Already up to date"
+            echo "update_needed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update snapcraft.yaml
+        if: steps.check.outputs.update_needed == 'true'
+        run: |
+          NEW_TAG="${{ steps.upstream.outputs.tag }}"
+
+          # Check if source-tag already exists in the lemonade part
+          if grep -q '^\s\+source-tag:' snap/snapcraft.yaml; then
+            # Update existing source-tag
+            sed -i "s/^\(\s\+source-tag:\s*\).*/\1$NEW_TAG/" snap/snapcraft.yaml
+          else
+            # Add source-tag after source-subdir line in lemonade part
+            sed -i "/^\s\+source-subdir: src\/app/a\\    source-tag: $NEW_TAG" snap/snapcraft.yaml
+          fi
+
+          echo "Updated snapcraft.yaml to use tag: $NEW_TAG"
+          cat snap/snapcraft.yaml
+
+      - name: Create Pull Request
+        if: steps.check.outputs.update_needed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Update to upstream ${{ steps.upstream.outputs.tag }}"
+          title: "Update to upstream ${{ steps.upstream.outputs.tag }}"
+          body: |
+            Automated update to track upstream release.
+
+            **Changes:**
+            - Updated source-tag from `${{ steps.current.outputs.tag }}` to `${{ steps.upstream.outputs.tag }}`
+
+            **Upstream release:**
+            https://github.com/lemonade-sdk/lemonade/releases/tag/${{ steps.upstream.outputs.tag }}
+          branch: update-upstream-${{ steps.upstream.outputs.tag }}
+          delete-branch: true
