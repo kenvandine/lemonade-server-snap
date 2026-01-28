@@ -48,8 +48,8 @@ platforms:
   amd64:
 
 layout:
-  /usr/local/share/lemonade-server:
-    symlink: $SNAP/usr/local/share/lemonade-server
+  /usr/share/lemonade-server:
+    symlink: $SNAP/usr/share/lemonade-server
   /usr/share/hwdata:
     symlink: $SNAP/usr/share/hwdata
   /usr/share/misc/pci.ids:
@@ -77,7 +77,7 @@ apps:
       - hardware-observe
       - system-observe
   lemonade-server:
-    command: usr/local/bin/lemonade-server
+    command: usr/bin/lemonade-server
     plugs:
       - home
       - removable-media
@@ -87,11 +87,8 @@ apps:
       - hardware-observe
       - system-observe
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/local/share/lemonade-server:$SNAP/usr/local/lib/llamacpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-      PATH: "$SNAP/usr/local/bin:$PATH"
-      LEMONADE_LLAMACPP_VULKAN_BIN: "$SNAP/usr/local/lib/llamacpp/vulkan/llama-server"
-      LEMONADE_LLAMACPP_CPU_BIN: "$SNAP/usr/local/lib/llamacpp/cpu/llama-server"
-      LEMONADE_LLAMACPP_ROCM_BIN: "$SNAP/usr/local/bin/llama-server-rocm"
+      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP/usr/lib/llamacpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      PATH: "$SNAP/usr/bin:$PATH"
   service:
     command: bin/lemonade-server-wrapper serve
     daemon: simple
@@ -108,13 +105,10 @@ apps:
       - hardware-observe
       - system-observe
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/local/share/lemonade-server:$SNAP/usr/local/lib/llamacpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-      PATH: "$SNAP/usr/local/bin:$PATH"
+      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP/usr/lib/llamacpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      PATH: "$SNAP/usr/bin:$PATH"
       HOME: "$SNAP_COMMON"
       LEMONADE_CACHE_DIR: "$SNAP_COMMON/cache/lemonade"
-      LEMONADE_LLAMACPP_VULKAN_BIN: "$SNAP/usr/local/lib/llamacpp/vulkan/llama-server"
-      LEMONADE_LLAMACPP_CPU_BIN: "$SNAP/usr/local/lib/llamacpp/cpu/llama-server"
-      LEMONADE_LLAMACPP_ROCM_BIN: "$SNAP/usr/local/bin/llama-server-rocm"
 
 parts:
   deps:
@@ -128,6 +122,7 @@ parts:
       - curl # for metrics
       - hwdata # PCI ID database for lspci device name resolution
       - pciutils # lspci for GPU detection
+      - unzip # For extracting backends at runtime
     override-build: |
       set +u # For unbound variables
       # workaround for build.snapcraft.io builds
@@ -144,186 +139,28 @@ parts:
       curl -sL https://pci-ids.ucw.cz/v2.2/pci.ids -o $CRAFT_PART_INSTALL/usr/share/misc/pci.ids
 
   lemonade-server:
-    plugin: dump
-    source: https://github.com/lemonade-sdk/lemonade/releases/download/v$SNAPCRAFT_PROJECT_VERSION/lemonade-server-minimal_$SNAPCRAFT_PROJECT_VERSION_amd64.deb
-
-  llamacpp-vulkan:
-    plugin: nil
-    source: https://github.com/ggml-org/llama.cpp/releases/download/b7788/llama-b7788-bin-ubuntu-vulkan-x64.tar.gz
-    source-type: tar
+    plugin: cmake
+    source: https://github.com/lemonade-sdk/lemonade.git
+    source-subdir: src/cpp
+    cmake-parameters:
+      - -DCMAKE_PREFIX_PATH=/usr
+    build-packages:
+      - build-essential
+      - g++
+      - cmake
+      - git
+      - curl
+      - libcurl4-openssl-dev
+      - libssl-dev
+      - zlib1g-dev
+      - pkg-config
+    override-pull: |
+      craftctl default
     override-build: |
       craftctl default
-      mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/llamacpp/vulkan
-      DEST=$CRAFT_PART_INSTALL/usr/local/lib/llamacpp/vulkan
-      # Copy all files
-      cp -a */* $DEST/ || true
-      chmod +x $DEST/llama-server
-    stage-packages:
-      - libvulkan1
-
-  llamacpp-cpu:
-    plugin: nil
-    source: https://github.com/ggml-org/llama.cpp/releases/download/b7788/llama-b7788-bin-ubuntu-x64.tar.gz
-    source-type: tar
-    override-build: |
-      craftctl default
-      mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/llamacpp/cpu
-      DEST=$CRAFT_PART_INSTALL/usr/local/lib/llamacpp/cpu
-      cp -a */* $DEST/ || true
-      chmod +x $DEST/llama-server
-
-  llamacpp-rocm-gfx110x:
-    plugin: nil
-    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1162/llama-b1162-ubuntu-rocm-gfx110X-x64.zip
-    source-type: zip
-    override-build: |
-      craftctl default
-      mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/llamacpp/rocm/gfx110X
-      DEST=$CRAFT_PART_INSTALL/usr/local/lib/llamacpp/rocm/gfx110X
-      cp -a * $DEST/ || true
-      # Fix broken symlinks (zip stores them as text files with target name)
-      cd $DEST
-      for f in *.so *.so.[0-9]*; do
-        if [ -f "$f" ] && [ $(stat -c%s "$f") -lt 200 ]; then
-          target=$(cat "$f" 2>/dev/null | tr -d '\0')
-          if [ -f "$target" ]; then
-            rm "$f"
-            ln -sf "$target" "$f"
-          fi
-        fi
-      done
-      chmod +x $DEST/llama-server
-
-  llamacpp-rocm-gfx1150:
-    plugin: nil
-    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1162/llama-b1162-ubuntu-rocm-gfx1150-x64.zip
-    source-type: zip
-    override-build: |
-      craftctl default
-      mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/llamacpp/rocm/gfx1150
-      DEST=$CRAFT_PART_INSTALL/usr/local/lib/llamacpp/rocm/gfx1150
-      cp -a * $DEST/ || true
-      cd $DEST
-      for f in *.so *.so.[0-9]*; do
-        if [ -f "$f" ] && [ $(stat -c%s "$f") -lt 200 ]; then
-          target=$(cat "$f" 2>/dev/null | tr -d '\0')
-          if [ -f "$target" ]; then
-            rm "$f"
-            ln -sf "$target" "$f"
-          fi
-        fi
-      done
-      chmod +x $DEST/llama-server
-
-  llamacpp-rocm-gfx1151:
-    plugin: nil
-    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1162/llama-b1162-ubuntu-rocm-gfx1151-x64.zip
-    source-type: zip
-    override-build: |
-      craftctl default
-      mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/llamacpp/rocm/gfx1151
-      DEST=$CRAFT_PART_INSTALL/usr/local/lib/llamacpp/rocm/gfx1151
-      cp -a * $DEST/ || true
-      cd $DEST
-      for f in *.so *.so.[0-9]*; do
-        if [ -f "$f" ] && [ $(stat -c%s "$f") -lt 200 ]; then
-          target=$(cat "$f" 2>/dev/null | tr -d '\0')
-          if [ -f "$target" ]; then
-            rm "$f"
-            ln -sf "$target" "$f"
-          fi
-        fi
-      done
-      chmod +x $DEST/llama-server
-
-  llamacpp-rocm-gfx120x:
-    plugin: nil
-    source: https://github.com/lemonade-sdk/llamacpp-rocm/releases/download/b1162/llama-b1162-ubuntu-rocm-gfx120X-x64.zip
-    source-type: zip
-    override-build: |
-      craftctl default
-      mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/llamacpp/rocm/gfx120X
-      DEST=$CRAFT_PART_INSTALL/usr/local/lib/llamacpp/rocm/gfx120X
-      cp -a * $DEST/ || true
-      cd $DEST
-      for f in *.so *.so.[0-9]*; do
-        if [ -f "$f" ] && [ $(stat -c%s "$f") -lt 200 ]; then
-          target=$(cat "$f" 2>/dev/null | tr -d '\0')
-          if [ -f "$target" ]; then
-            rm "$f"
-            ln -sf "$target" "$f"
-          fi
-        fi
-      done
-      chmod +x $DEST/llama-server
-
-  llamacpp-rocm-wrapper:
-    plugin: nil
-    after:
-      - llamacpp-rocm-gfx110x
-      - llamacpp-rocm-gfx1150
-      - llamacpp-rocm-gfx1151
-      - llamacpp-rocm-gfx120x
-    override-build: |
-      mkdir -p $CRAFT_PART_INSTALL/usr/local/bin
-      cat > $CRAFT_PART_INSTALL/usr/local/bin/llama-server-rocm << 'EOF'
-      #!/bin/bash
-      # Detect AMD GPU architecture and run the appropriate llama-server binary
-      # Uses PCI device IDs since snap sandbox lacks the PCI ID database
-
-      ROCM_BASE="$SNAP/usr/local/lib/llamacpp/rocm"
-      ARCH="gfx110X"  # default
-
-      # Detect GPU from lspci output - extract AMD device ID [1002:XXXX]
-      GPU_LINE=$(lspci -nn 2>/dev/null | grep -iE "vga|display|3d" | grep -i "1002:" | head -1)
-
-      if [ -n "$GPU_LINE" ]; then
-        # Extract device ID (e.g., 150e from [1002:150e])
-        DEVICE_ID=$(echo "$GPU_LINE" | grep -oE '\[1002:[0-9a-fA-F]+\]' | grep -oE ':[0-9a-fA-F]+' | tr -d ':' | tr '[:upper:]' '[:lower:]')
-
-        case "$DEVICE_ID" in
-          # Strix Point - gfx1150 (Radeon 880M/890M)
-          150e|150f)
-            ARCH="gfx1150"
-            ;;
-          # Strix Halo - gfx1151 (Radeon 8050S/8060S)
-          1510|1511|1512)
-            ARCH="gfx1151"
-            ;;
-          # RDNA4 - gfx120X (RX 9000 series)
-          # Device IDs TBD - using pattern match as fallback
-          *)
-            # Fallback: try name-based detection if device ID not in list
-            if echo "$GPU_LINE" | grep -qiE "8050S|8060S"; then
-              ARCH="gfx1151"
-            elif echo "$GPU_LINE" | grep -qiE "880M|890M"; then
-              ARCH="gfx1150"
-            elif echo "$GPU_LINE" | grep -qiE "9060|9070|R9700"; then
-              ARCH="gfx120X"
-            elif echo "$GPU_LINE" | grep -qiE "7700|7800|7900|V710|780M|760M"; then
-              ARCH="gfx110X"
-            fi
-            ;;
-        esac
-      fi
-
-      BINARY="$ROCM_BASE/$ARCH/llama-server"
-
-      # Fallback to gfx110X if detected arch binary doesn't exist
-      if [ ! -x "$BINARY" ]; then
-        ARCH="gfx110X"
-        BINARY="$ROCM_BASE/$ARCH/llama-server"
-      fi
-
-      # Set LD_LIBRARY_PATH for ROCm libraries
-      export LD_LIBRARY_PATH="$ROCM_BASE/$ARCH:${LD_LIBRARY_PATH}"
-
-      # Log detection for debugging
-      echo "[ROCm Wrapper] Detected device ID: $DEVICE_ID, using architecture: $ARCH" >&2
-
-      exec "$BINARY" "$@"
-      EOF
-      chmod +x $CRAFT_PART_INSTALL/usr/local/bin/llama-server-rocm
+      mkdir -p $CRAFT_PART_INSTALL/usr/{bin,share}
+      mv $CRAFT_PART_INSTALL/usr/local/bin/* $CRAFT_PART_INSTALL/usr/bin/
+      mv $CRAFT_PART_INSTALL/usr/local/share/* $CRAFT_PART_INSTALL/usr/share/
 
   scripts:
     plugin: dump
