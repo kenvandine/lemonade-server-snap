@@ -106,9 +106,20 @@ sudo snap set lemonade-server ip-address=0.0.0.0
 
 # Set the log level (default: info, options: debug, info, warn)
 sudo snap set lemonade-server log-level=debug
+
+# Set the context size in tokens (default: 4096)
+# Increase this for applications that need larger context windows
+sudo snap set lemonade-server ctx-size=32768
 ```
 
 Changes take effect after the service restarts automatically.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `port` | 8000 | Server port number |
+| `ip-address` | 127.0.0.1 | IP address to bind to (use 0.0.0.0 for all interfaces) |
+| `log-level` | info | Log verbosity (debug, info, warn) |
+| `ctx-size` | 4096 | Context window size in tokens |
 
 ### Model cache location
 

@@ -23,4 +23,11 @@ if [ -z $output ]; then
     snapctl set log-level=info
 fi
 
+echo "Getting configuration value for 'ctx-size'"
+output=$(snapctl get ctx-size)
+if [ -z $output ]; then
+	echo "No value for ctx-size, resetting to default"
+    snapctl set ctx-size=4096
+fi
+
 snapctl start "$SNAP_INSTANCE_NAME"
