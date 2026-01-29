@@ -57,7 +57,7 @@ layout:
 slots:
   # Adds a pseudo content interface to allow clients to express their
   # runtime dependency on lemonade-server
-  install-lemonade-runtime-dependency:
+  lemonade-server:
     interface: content
     content: foo
     read:
