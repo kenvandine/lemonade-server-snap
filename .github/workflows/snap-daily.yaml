@@ -6,7 +6,7 @@ on:
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
-  stable:
+  daily-build:
     runs-on: ubuntu-24.04
     if: github.ref == 'refs/heads/main' # Run only for the 'main' branch
     steps:
