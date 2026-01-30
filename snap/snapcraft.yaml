@@ -140,7 +140,6 @@ parts:
   lemonade-server:
     plugin: cmake
     source: https://github.com/lemonade-sdk/lemonade.git
-    source-subdir: src/cpp
     cmake-parameters:
       - -DCMAKE_PREFIX_PATH=/usr
     build-packages:
@@ -153,6 +152,7 @@ parts:
       - libssl-dev
       - zlib1g-dev
       - pkg-config
+      - ninja-build
     override-pull: |
       craftctl default
       VERSION=$(craftctl get version)
