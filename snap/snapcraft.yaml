@@ -142,6 +142,7 @@ parts:
     source: https://github.com/lemonade-sdk/lemonade.git
     cmake-parameters:
       - -DCMAKE_PREFIX_PATH=/usr
+      - -DCMAKE_INSTALL_PREFIX=/usr
     build-packages:
       - build-essential
       - g++
@@ -162,9 +163,6 @@ parts:
       fi
     override-build: |
       craftctl default
-      mkdir -p $CRAFT_PART_INSTALL/usr/{bin,share}
-      mv $CRAFT_PART_INSTALL/usr/local/bin/* $CRAFT_PART_INSTALL/usr/bin/
-      mv $CRAFT_PART_INSTALL/usr/local/share/* $CRAFT_PART_INSTALL/usr/share/
 
   scripts:
     plugin: dump
