@@ -41,7 +41,7 @@ For ROCm GPU acceleration on AMD hardware, connect the `process-control` interfa
 
 ```bash
 sudo snap connect lemonade-server:process-control
-sudo snap restart lemonade-server.service
+sudo snap restart lemonade-server.daemon
 ```
 
 This is required because ROCm needs permission to set CPU thread affinity for optimal performance.
@@ -55,7 +55,7 @@ sudo snap services lemonade-server
 ### View logs
 
 ```bash
-sudo journalctl -u snap.lemonade-server.service -f
+sudo journalctl -u snap.lemonade-server.daemon.service -f
 ```
 
 ### Test the API
@@ -135,16 +135,16 @@ To use models from your home directory or removable media, the snap has access t
 
 ```bash
 # Stop the service
-sudo snap stop lemonade-server.service
+sudo snap stop lemonade-server.daemon
 
 # Start the service
-sudo snap start lemonade-server.service
+sudo snap start lemonade-server.daemon
 
 # Restart the service
-sudo snap restart lemonade-server.service
+sudo snap restart lemonade-server.daemon
 
 # Disable autostart
-sudo snap stop --disable lemonade-server.service
+sudo snap stop --disable lemonade-server.daemon
 ```
 
 ### Command-line usage
@@ -171,7 +171,7 @@ Lemonade Server is compatible with any application that supports the OpenAI API:
 
 Check the logs for errors:
 ```bash
-sudo journalctl -u snap.lemonade-server.service --no-pager -n 50
+sudo journalctl -u snap.lemonade-server.daemon.service --no-pager -n 50
 ```
 
 ### GPU not detected
@@ -196,12 +196,12 @@ If you have an AMD GPU but ROCm isn't working:
 
 2. Restart the service:
    ```bash
-   sudo snap restart lemonade-server.service
+   sudo snap restart lemonade-server.daemon
    ```
 
 3. Check the logs for backend detection:
    ```bash
-   sudo journalctl -u snap.lemonade-server.service.service -n 20
+   sudo journalctl -u snap.lemonade-server.daemon.service -n 20
    ```
 
    You should see: `[Lemonade Wrapper] AMD GPU detected, using ROCm backend`
