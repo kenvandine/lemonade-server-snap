@@ -88,7 +88,7 @@ apps:
     environment:
       LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP/usr/lib/llamacpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
       PATH: "$SNAP/usr/bin:$PATH"
-  service:
+  daemon:
     command: bin/lemonade-server-wrapper serve
     daemon: simple
     install-mode: enable
