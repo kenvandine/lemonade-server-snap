@@ -110,6 +110,9 @@ sudo snap set lemonade-server log-level=debug
 # Set the context size in tokens (default: 4096)
 # Increase this for applications that need larger context windows
 sudo snap set lemonade-server ctx-size=32768
+
+# Set optional llamacpp-args
+sudo snap set lemonade-server llamacpp-args="--no-mmap --flash-attn on"
 ```
 
 Changes take effect after the service restarts automatically.
@@ -120,6 +123,7 @@ Changes take effect after the service restarts automatically.
 | `ip-address` | 127.0.0.1 | IP address to bind to (use 0.0.0.0 for all interfaces) |
 | `log-level` | info | Log verbosity (debug, info, warn) |
 | `ctx-size` | 4096 | Context window size in tokens |
+| `llamacpp-args` | "" | Optional args to pass to llamacpp-server |
 
 ### Model cache location
 
