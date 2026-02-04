@@ -7,12 +7,14 @@ LEMONADE_PORT=$(snapctl get port)
 LEMONADE_HOST=$(snapctl get ip-address)
 LEMONADE_LOG_LEVEL=$(snapctl get log-level)
 LEMONADE_CTX_SIZE=$(snapctl get ctx-size)
+LEMONADE_LLAMACPP_ARGS=$(snapctl get llamacpp-args)
 
 # Use defaults if not set
 export LEMONADE_PORT=${LEMONADE_PORT:-8000}
 export LEMONADE_HOST=${LEMONADE_HOST:-127.0.0.1}
 export LEMONADE_LOG_LEVEL=${LEMONADE_LOG_LEVEL:-info}
 export LEMONADE_CTX_SIZE=${LEMONADE_CTX_SIZE:-4096}
+export LEMONADE_LLAMACPP_ARGS=${LEMONADE_LLAMACPP_ARGS:-""}
 
 BACKEND="vulkan"  # default
 
@@ -67,4 +69,4 @@ if [ "$BACKEND" = "vulkan" ] && [ -z "$gfx_version" ]; then
   echo "[Lemonade Wrapper] No AMD GPU detected, using Vulkan backend" >&2
 fi
 
-exec "$SNAP/usr/bin/lemonade-server" "$@" --llamacpp "$BACKEND" --host "$LEMONADE_HOST" --port "$LEMONADE_PORT" --log-level "$LEMONADE_LOG_LEVEL" --ctx-size "$LEMONADE_CTX_SIZE"
+exec "$SNAP/usr/bin/lemonade-server" "$@" --llamacpp "$BACKEND" --host "$LEMONADE_HOST" --port "$LEMONADE_PORT" --log-level "$LEMONADE_LOG_LEVEL" --ctx-size "$LEMONADE_CTX_SIZE" --llamacpp-args "$LEMONADE_LLAMACPP_ARGS"

@@ -29,5 +29,11 @@ if [ -z $output ]; then
 	echo "No value for ctx-size, resetting to default"
     snapctl set ctx-size=4096
 fi
+echo "Getting configuration value for 'llamacpp-args'"
+output=$(snapctl get llamacpp-args)
+if [ -z $output ]; then
+	echo "No value for llamacpp-args, resetting to default"
+    snapctl set llamacpp-args=""
+fi
 
 snapctl start "$SNAP_INSTANCE_NAME"
