@@ -112,7 +112,7 @@ sudo snap set lemonade-server log-level=debug
 sudo snap set lemonade-server ctx-size=32768
 
 # Set optional llamacpp-args
-sudo snap set lemonade-server llamacpp-args=--no-mmap --flash-attn on"
+sudo snap set lemonade-server llamacpp-args="--no-mmap --flash-attn on"
 ```
 
 Changes take effect after the service restarts automatically.
