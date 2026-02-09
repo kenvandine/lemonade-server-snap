@@ -144,6 +144,7 @@ parts:
     cmake-parameters:
       - -DCMAKE_PREFIX_PATH=/usr
       - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DBUILD_WEB_APP=ON
     build-packages:
       - build-essential
       - g++
@@ -155,6 +156,7 @@ parts:
       - zlib1g-dev
       - pkg-config
       - ninja-build
+      - npm
     override-pull: |
       craftctl default
       VERSION=$(craftctl get version)
