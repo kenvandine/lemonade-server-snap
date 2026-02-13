@@ -122,6 +122,8 @@ parts:
       - hwdata # PCI ID database for lspci device name resolution
       - pciutils # lspci for GPU detection
       - unzip # For extracting backends at runtime
+      - libdrm-amdgpu1 # SD backends need this at runtime
+      - libnuma1 # SD backends need this at runtime
     override-build: |
       set +u # For unbound variables
       # workaround for build.snapcraft.io builds
