@@ -108,6 +108,7 @@ apps:
       PATH: "$SNAP/usr/bin:$PATH"
       HOME: "$SNAP_COMMON"
       LEMONADE_CACHE_DIR: "$SNAP_COMMON/cache/lemonade"
+      LEMONADE_DISABLE_SYSTEMD_JOURNAL: 1
 
 parts:
   deps:
