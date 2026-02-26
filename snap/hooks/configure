@@ -36,4 +36,13 @@ if [ -z $output ]; then
     snapctl set llamacpp-args=""
 fi
 
+OVERRIDE_DIR="/etc/systemd/system/snap.lemonade-server.daemon.service.d"
+OVERRIDE_FILE="$OVERRIDE_DIR/limits.conf"
+
+if snapctl is-connected systemd-daemon-override; then
+    mkdir -p "$OVERRIDE_DIR"
+    printf '[Service]\nLimitMEMLOCK=infinity\n' > "$OVERRIDE_FILE"
+    systemctl daemon-reload || true
+fi
+
 snapctl start "$SNAP_INSTANCE_NAME"
