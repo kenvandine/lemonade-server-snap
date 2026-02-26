@@ -54,6 +54,26 @@ layout:
   /usr/share/misc/pci.ids:
     bind-file: $SNAP/usr/share/misc/pci.ids
 
+plugs:
+  systemd-daemon-override:
+    interface: system-files
+    write:
+      - /etc/systemd/system/snap.lemonade-server.daemon.service.d
+
+hooks:
+  configure:
+    plugs:
+      - systemd-daemon-override
+  connect-plug-systemd-daemon-override:
+    plugs:
+      - systemd-daemon-override
+  disconnect-plug-systemd-daemon-override:
+    plugs:
+      - systemd-daemon-override
+  remove:
+    plugs:
+      - systemd-daemon-override
+
 slots:
   # Adds a pseudo content interface to allow clients to express their
   # runtime dependency on lemonade-server
