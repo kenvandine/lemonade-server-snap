@@ -143,7 +143,7 @@ parts:
   lemonade-server:
     plugin: cmake
     source: https://github.com/lemonade-sdk/lemonade.git
-    source-tag: v9.3.4
+    source-tag: v9.4.0
     cmake-parameters:
       - -DCMAKE_PREFIX_PATH=/usr
       - -DCMAKE_INSTALL_PREFIX=/usr
