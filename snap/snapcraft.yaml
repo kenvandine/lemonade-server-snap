@@ -349,6 +349,7 @@ parts:
       - libxfixes3
       - libxrender1
       - libxrt2
+      - libxrt-npu2
       - libxvidcore4
       - libzmq5
       - libzvbi0t64
