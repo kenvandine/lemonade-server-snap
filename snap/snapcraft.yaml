@@ -134,6 +134,7 @@ apps:
       LEMONADE_CACHE_DIR: "$SNAP_COMMON/cache/lemonade"
       LEMONADE_DISABLE_SYSTEMD_JOURNAL: 1
       FLM_MODEL_PATH: $SNAP_COMMON/flm/models
+      FLM_CONFIG_PATH: $SNAP/usr/share/flm
 
 parts:
   deps:
