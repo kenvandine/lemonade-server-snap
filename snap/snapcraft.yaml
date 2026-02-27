@@ -228,6 +228,7 @@ parts:
         craftctl set version=$VERSION
       fi
       patch -p1 < $SNAPCRAFT_PROJECT_DIR/snap/local/patches/enable_npu.patch
+      patch -p1 < $SNAPCRAFT_PROJECT_DIR/snap/local/patches/flm_min_kernel.patch
     override-build: |
       craftctl default
 
