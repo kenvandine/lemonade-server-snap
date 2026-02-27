@@ -46,6 +46,10 @@ contact: https://github.com/kenvandine/lemonade-server-snap/issues
 platforms:
   amd64:
 
+package-repositories:
+  - type: apt
+    ppa: amd-team/xrt
+
 layout:
   /usr/share/lemonade-server:
     symlink: $SNAP/usr/share/lemonade-server
@@ -129,6 +133,7 @@ apps:
       HOME: "$SNAP_COMMON"
       LEMONADE_CACHE_DIR: "$SNAP_COMMON/cache/lemonade"
       LEMONADE_DISABLE_SYSTEMD_JOURNAL: 1
+      FLM_MODEL_PATH: $SNAP_COMMON/flm/models
 
 parts:
   deps:
@@ -188,6 +193,139 @@ parts:
       fi
     override-build: |
       craftctl default
+
+  fastflowlm:
+    plugin: cmake
+    source: https://github.com/FastFlowLM/FastFlowLM.git
+    source-subdir: src
+    cmake-parameters:
+      - -DCMAKE_PREFIX_PATH=/usr
+      - -DCMAKE_INSTALL_PREFIX=/usr
+    build-packages:
+      - build-essential
+      - g++
+      - cmake
+      - git
+      - curl
+      - libcurl4-openssl-dev
+      - libssl-dev
+      - zlib1g-dev
+      - pkg-config
+      - ninja-build
+      - libxrt-dev
+      - libamdhip64-dev
+      - libboost-program-options-dev
+      - libboost-dev
+      - libavcodec-dev
+      - libavformat-dev
+      - libavutil-dev
+      - libdrm-dev
+      - libfftw3-dev
+      - libreadline-dev
+      - libswresample-dev
+      - libswscale-dev
+      - uuid-dev
+      - rustc-1.89
+      - cargo-1.89
+    stage-packages:
+      - libamdhip64-5 # For ROCm support
+      - libaom3
+      - libavcodec60
+      - libavformat60
+      - libavutil58
+      - libbluray2
+      - libboost-program-options1.83.0
+      - libcairo-gobject2
+      - libcairo2
+      - libchromaprint1
+      - libcjson1
+      - libcodec2-1.2
+      - libdatrie1
+      - libdav1d7
+      - libfftw3-single3
+      - libfontconfig1
+      - libfribidi0
+      - libgdk-pixbuf-2.0-0
+      - libgme0
+      - libgraphite2-3
+      - libgsm1
+      - libharfbuzz0b
+      - libhwy1t64
+      - libjpeg-turbo8
+      - libjxl0.7
+      - liblcms2-2
+      - libmbedcrypto7t64
+      - libmp3lame0
+      - libmpg123-0t64
+      - libnorm1t64
+      - libogg0
+      - libopenjp2-7
+      - libopenmpt0t64
+      - libopus0
+      - libpango-1.0-0
+      - libpangocairo-1.0-0
+      - libpangoft2-1.0-0
+      - libpgm-5.3-0t64
+      - libpixman-1-0
+      - librabbitmq4
+      - librav1e0
+      - librist4
+      - librsvg2-2
+      - libsharpyuv0
+      - libshine3
+      - libsnappy1v5
+      - libsodium23
+      - libsoxr0
+      - libspeex1
+      - libsrt1.5-gnutls
+      - libssh-gcrypt-4
+      - libsvtav1enc1d1
+      - libswresample4
+      - libswscale7
+      - libthai0
+      - libtheora0
+      - libtwolame0
+      - libudfread0
+      - libva-drm2
+      - libva-x11-2
+      - libva2
+      - libvdpau1
+      - libvorbis0a
+      - libvorbisenc2
+      - libvorbisfile3
+      - libvpl2
+      - libvpx9
+      - libwebp7
+      - libwebpmux3
+      - libx11-6
+      - libx11-xcb1
+      - libx264-164
+      - libx265-199
+      - libxau6
+      - libxcb-dri3-0
+      - libxcb-render0
+      - libxcb-shm0
+      - libxcb1
+      - libxdmcp6
+      - libxext6
+      - libxfixes3
+      - libxrender1
+      - libxrt2
+      - libxvidcore4
+      - libzmq5
+      - libzvbi0t64
+      - ocl-icd-libopencl1
+    override-build: |
+      export CARGO=/usr/bin/cargo-1.89
+      export RUSTC=/usr/bin/rustc-1.89
+      ln -sf /usr/bin/cargo-1.89 /usr/bin/cargo
+      ln -sf /usr/bin/rustc-1.89 /usr/bin/rustc
+      craftctl default
+    prime:
+      - usr/lib/*.so
+      - usr/lib/*/*.so.*
+      - usr/bin
+      - usr/share/flm
 
   scripts:
     plugin: dump
