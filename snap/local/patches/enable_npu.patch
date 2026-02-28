@@ -1,0 +1,13 @@
+❮ git diff
+diff --git a/src/cpp/server/system_info.cpp b/src/cpp/server/system_info.cpp
+index 66c5219b..bed089c4 100644
+--- a/src/cpp/server/system_info.cpp
++++ b/src/cpp/server/system_info.cpp
+@@ -134,7 +134,7 @@ static const std::vector<RecipeBackendDef> RECIPE_DEFS = {
+     }},
+ 
+     // FLM - NPU (XDNA2)
+-    {"flm", "npu", {"windows"}, {
++    {"flm", "npu", {"windows", "linux"}, {
+         {"amd_npu", {"XDNA2"}},
+     }},
