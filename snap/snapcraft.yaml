@@ -354,9 +354,6 @@ parts:
       - libzmq5
       - libzvbi0t64
       - ocl-icd-libopencl1
-    override-pull: |
-      craftctl default
-      patch -p1 < $SNAPCRAFT_PROJECT_DIR/snap/local/patches/preload_bundled_libraries.patch
     override-build: |
       export CARGO=/usr/bin/cargo-1.89
       export RUSTC=/usr/bin/rustc-1.89
