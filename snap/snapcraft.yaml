@@ -53,10 +53,6 @@ package-repositories:
 layout:
   /usr/share/lemonade-server:
     symlink: $SNAP/usr/share/lemonade-server
-  /usr/share/hwdata:
-    symlink: $SNAP/usr/share/hwdata
-  /usr/share/misc/pci.ids:
-    bind-file: $SNAP/usr/share/misc/pci.ids
   # Add layout entries so XRT's hardcoded absolute paths resolve to the snap's copies
   /usr/lib/x86_64-linux-gnu/libxrt_core.so.2:
     bind-file: $SNAP/usr/lib/x86_64-linux-gnu/libxrt_core.so.2.21.75
@@ -181,8 +177,6 @@ parts:
       - libatomic1
       - libcurl4t64
       - curl # for metrics
-      - hwdata # PCI ID database for lspci device name resolution
-      - pciutils # lspci for GPU detection
       - unzip # For extracting backends at runtime
       - libdrm-amdgpu1 # SD backends need this at runtime
       - libnuma1 # SD backends need this at runtime
@@ -195,11 +189,7 @@ parts:
         export GLOBAL_AGENT_HTTP_PROXY="${http_proxy}"
         export GLOBAL_AGENT_HTTPS_PROXY="${http_proxy}"
       fi
-
       craftctl default
-      # Download latest PCI ID database (hwdata package version is outdated)
-      mkdir -p $CRAFT_PART_INSTALL/usr/share/misc
-      curl -sL https://pci-ids.ucw.cz/v2.2/pci.ids -o $CRAFT_PART_INSTALL/usr/share/misc/pci.ids
 
   lemonade-server:
     plugin: cmake
@@ -251,7 +241,6 @@ parts:
       - pkg-config
       - ninja-build
       - libxrt-dev
-      - libamdhip64-dev
       - libboost-program-options-dev
       - libboost-dev
       - libavcodec-dev
@@ -266,7 +255,6 @@ parts:
       - rustc-1.89
       - cargo-1.89
     stage-packages:
-      - libamdhip64-5 # For ROCm support
       - libaom3
       - libavcodec60
       - libavformat60
