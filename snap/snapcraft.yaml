@@ -66,7 +66,7 @@ layout:
     bind-file: $SNAP/usr/lib/x86_64-linux-gnu/libxrt_driver_xdna.so.2.21.75
       
 plugs:
-  systemd-daemon-override:
+  etc-systemd-system-daemon-override:
     interface: system-files
     write:
       - /etc/systemd/system/snap.lemonade-server.daemon.service.d
@@ -74,16 +74,16 @@ plugs:
 hooks:
   configure:
     plugs:
-      - systemd-daemon-override
-  connect-plug-systemd-daemon-override:
+      - etc-systemd-system-daemon-override
+  connect-plug-etc-systemd-system-daemon-override:
     plugs:
-      - systemd-daemon-override
-  disconnect-plug-systemd-daemon-override:
+      - etc-systemd-system-daemon-override
+  disconnect-plug-etc-systemd-system-daemon-override:
     plugs:
-      - systemd-daemon-override
+      - etc-systemd-system-daemon-override
   remove:
     plugs:
-      - systemd-daemon-override
+      - etc-systemd-system-daemon-override
 
 slots:
   # Adds a pseudo content interface to allow clients to express their
