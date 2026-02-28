@@ -49,10 +49,6 @@ platforms:
 layout:
   /usr/share/lemonade-server:
     symlink: $SNAP/usr/share/lemonade-server
-  /usr/share/hwdata:
-    symlink: $SNAP/usr/share/hwdata
-  /usr/share/misc/pci.ids:
-    bind-file: $SNAP/usr/share/misc/pci.ids
 
 slots:
   # Adds a pseudo content interface to allow clients to express their
@@ -120,8 +116,6 @@ parts:
       - libatomic1
       - libcurl4t64
       - curl # for metrics
-      - hwdata # PCI ID database for lspci device name resolution
-      - pciutils # lspci for GPU detection
       - unzip # For extracting backends at runtime
       - libdrm-amdgpu1 # SD backends need this at runtime
       - libnuma1 # SD backends need this at runtime
@@ -134,11 +128,7 @@ parts:
         export GLOBAL_AGENT_HTTP_PROXY="${http_proxy}"
         export GLOBAL_AGENT_HTTPS_PROXY="${http_proxy}"
       fi
-
       craftctl default
-      # Download latest PCI ID database (hwdata package version is outdated)
-      mkdir -p $CRAFT_PART_INSTALL/usr/share/misc
-      curl -sL https://pci-ids.ucw.cz/v2.2/pci.ids -o $CRAFT_PART_INSTALL/usr/share/misc/pci.ids
 
   lemonade-server:
     plugin: cmake
