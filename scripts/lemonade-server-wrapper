@@ -16,6 +16,28 @@ export LEMONADE_LOG_LEVEL=${LEMONADE_LOG_LEVEL:-info}
 export LEMONADE_CTX_SIZE=${LEMONADE_CTX_SIZE:-4096}
 export LEMONADE_LLAMACPP_ARGS=${LEMONADE_LLAMACPP_ARGS:-""}
 
+# GPU device selection via Vulkan loader driver filtering
+LEMONADE_GPU_DEVICE=$(snapctl get gpu-device)
+if [ -n "$LEMONADE_GPU_DEVICE" ]; then
+  case "$LEMONADE_GPU_DEVICE" in
+    nvidia)
+      export VK_LOADER_DRIVERS_SELECT='*nvidia*'
+      echo "[Lemonade Wrapper] GPU device filter: nvidia only" >&2
+      ;;
+    intel)
+      export VK_LOADER_DRIVERS_SELECT='*intel*'
+      echo "[Lemonade Wrapper] GPU device filter: intel only" >&2
+      ;;
+    amd)
+      export VK_LOADER_DRIVERS_SELECT='*radeon*'
+      echo "[Lemonade Wrapper] GPU device filter: amd only" >&2
+      ;;
+    *)
+      echo "[Lemonade Wrapper] Unknown gpu-device value: $LEMONADE_GPU_DEVICE (ignoring)" >&2
+      ;;
+  esac
+fi
+
 BACKEND="vulkan"  # default
 
 # Supported ROCm architectures (must have matching backend binaries)
