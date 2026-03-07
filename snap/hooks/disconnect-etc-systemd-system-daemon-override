@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+OVERRIDE_FILE="/etc/systemd/system/snap.lemonade-server.daemon.service.d/limits.conf"
+OVERRIDE_DIR="/etc/systemd/system/snap.lemonade-server.daemon.service.d"
+
+rm -f "$OVERRIDE_FILE"
+rmdir --ignore-fail-on-non-empty "$OVERRIDE_DIR" 2>/dev/null || true
+systemctl daemon-reload || true
+snapctl restart lemonade-server.daemon || true
