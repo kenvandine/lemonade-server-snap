@@ -35,6 +35,16 @@ The snap automatically detects your GPU and selects the best backend:
 - **AMD GPUs** - Uses ROCm for optimal performance
 - **Other GPUs** - Uses Vulkan
 
+### GPU Drivers (Vulkan)
+
+Vulkan support is provided by the `mesa-2404` content snap, which is installed
+automatically. If it isn't connected, connect it manually:
+
+```bash
+sudo snap connect lemonade-server:gpu-2404 mesa-2404:gpu-2404
+sudo snap restart lemonade-server.daemon
+```
+
 ### Enable ROCm Support (AMD GPUs)
 
 For ROCm GPU acceleration on AMD hardware, connect the `process-control` interface:
@@ -113,6 +123,10 @@ sudo snap set lemonade-server ctx-size=32768
 
 # Set optional llamacpp-args
 sudo snap set lemonade-server llamacpp-args="--no-mmap --flash-attn on"
+
+# Select a specific GPU for Vulkan (default: auto-detect all)
+# Useful on multi-GPU systems to target a discrete GPU
+sudo snap set lemonade-server gpu-device=nvidia
 ```
 
 Changes take effect after the service restarts automatically.
@@ -124,6 +138,7 @@ Changes take effect after the service restarts automatically.
 | `log-level` | info | Log verbosity (debug, info, warn) |
 | `ctx-size` | 4096 | Context window size in tokens |
 | `llamacpp-args` | "" | Optional args to pass to llamacpp-server |
+| `gpu-device` | "" | Vulkan GPU filter: `nvidia`, `intel`, `amd`, or empty for all |
 
 ### Model cache location
 
@@ -180,13 +195,20 @@ sudo journalctl -u snap.lemonade-server.daemon.service --no-pager -n 50
 
 ### GPU not detected
 
-Ensure you have the proper GPU drivers installed:
+Ensure the `gpu-2404` interface is connected:
 ```bash
-# For AMD GPUs
-sudo apt install mesa-vulkan-drivers
+sudo snap connect lemonade-server:gpu-2404 mesa-2404:gpu-2404
+sudo snap restart lemonade-server.daemon
+```
 
-# Check Vulkan support
-vulkaninfo | head -20
+### Vulkan crashes on multi-GPU systems
+
+On systems with multiple GPUs (e.g. Intel integrated + NVIDIA discrete), the
+Vulkan backend may default to the integrated GPU. Use `gpu-device` to select
+the discrete GPU:
+
+```bash
+sudo snap set lemonade-server gpu-device=nvidia
 ```
 
 ### ROCm not working (AMD GPUs)

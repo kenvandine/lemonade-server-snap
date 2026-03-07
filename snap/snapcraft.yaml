@@ -81,6 +81,12 @@ hooks:
     plugs:
       - etc-systemd-system-daemon-override
 
+plugs:
+  gpu-2404:
+    interface: content
+    target: $SNAP/gpu-2404
+    default-provider: mesa-2404
+
 slots:
   # Adds a pseudo content interface to allow clients to express their
   # runtime dependency on lemonade-server
@@ -93,6 +99,7 @@ slots:
 apps:
   metrics:
     command: bin/metrics
+    command-chain: [bin/gpu-2404-wrapper]
     plugs:
       - accel
       - home
@@ -100,11 +107,13 @@ apps:
       - network
       - network-bind
       - opengl
+      - gpu-2404
       - process-control
       - hardware-observe
       - system-observe
   lemonade-server:
     command: usr/bin/lemonade-server
+    command-chain: [bin/gpu-2404-wrapper]
     plugs:
       - accel
       - home
@@ -112,10 +121,11 @@ apps:
       - network
       - network-bind
       - opengl
+      - gpu-2404
       - hardware-observe
       - system-observe
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP/usr/lib/llamacpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP_COMMON/cache/lemonade/bin/llamacpp/vulka    n:$SNAP_COMMON/cache/lemonade/bin/whispercpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
       PATH: "$SNAP/usr/bin:$PATH"
       HOME: "$SNAP_COMMON"
       LEMONADE_CACHE_DIR: "$SNAP_COMMON/cache/lemonade"
@@ -124,6 +134,7 @@ apps:
       FLM_XCLBIN_PATH: $SNAP/usr/share/flm/xclbins
   daemon:
     command: bin/lemonade-server-wrapper serve
+    command-chain: [bin/gpu-2404-wrapper]
     daemon: simple
     install-mode: enable
     restart-condition: on-failure
@@ -135,11 +146,12 @@ apps:
       - network
       - network-bind
       - opengl
+      - gpu-2404
       - process-control
       - hardware-observe
       - system-observe
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP/usr/lib/llamacpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP_COMMON/cache/lemonade/bin/llamacpp/vulka    n:$SNAP_COMMON/cache/lemonade/bin/whispercpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
       PATH: "$SNAP/usr/bin:$PATH"
       HOME: "$SNAP_COMMON"
       LEMONADE_CACHE_DIR: "$SNAP_COMMON/cache/lemonade"
@@ -198,6 +210,8 @@ parts:
       - -DCMAKE_PREFIX_PATH=/usr
       - -DCMAKE_INSTALL_PREFIX=/usr
       - -DBUILD_WEB_APP=ON
+    build-snaps:
+      - node/22/stable
     build-packages:
       - build-essential
       - g++
@@ -209,7 +223,6 @@ parts:
       - zlib1g-dev
       - pkg-config
       - ninja-build
-      - npm
     override-pull: |
       craftctl default
       VERSION=$(craftctl get version)
@@ -353,6 +366,16 @@ parts:
       - usr/lib/*/*.so.*
       - usr/bin
       - usr/share/flm
+
+  gpu-snap:
+    after: [lemonade-server, deps]
+    source: https://github.com/canonical/gpu-snap.git
+    plugin: dump
+    override-prime: |
+      craftctl default
+      ${CRAFT_PART_SRC}/bin/gpu-2404-cleanup mesa-2404
+    prime:
+      - bin/gpu-2404-wrapper
 
   scripts:
     plugin: dump
