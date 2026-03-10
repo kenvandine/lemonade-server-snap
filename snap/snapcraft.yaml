@@ -66,24 +66,6 @@ plugs:
     interface: content
     target: $SNAP/gpu-2404
     default-provider: mesa-2404
-  etc-systemd-system-daemon-override:
-    interface: system-files
-    write:
-      - /etc/systemd/system/snap.lemonade-server.daemon.service.d
-
-hooks:
-  configure:
-    plugs:
-      - etc-systemd-system-daemon-override
-  connect-plug-etc-systemd-system-daemon-override:
-    plugs:
-      - etc-systemd-system-daemon-override
-  disconnect-plug-etc-systemd-system-daemon-override:
-    plugs:
-      - etc-systemd-system-daemon-override
-  remove:
-    plugs:
-      - etc-systemd-system-daemon-override
 
 slots:
   # Adds a pseudo content interface to allow clients to express their
@@ -244,12 +226,15 @@ parts:
 
   fastflowlm:
     plugin: cmake
-    source: https://github.com/FastFlowLM/FastFlowLM.git
+    source: https://github.com/kenvandine/FastFlowLM.git
+    source-branch: setrlimit
     source-subdir: src
     cmake-parameters:
       - -DCMAKE_PREFIX_PATH=/usr
       - -DCMAKE_INSTALL_PREFIX=/usr
       - -DCMAKE_XCLBIN_PREFIX=/usr/share/flm/xclbins
+      - -DFLM_VERSION=0.9.35
+      - -DNPU_VERSION=32.0.203.304
     build-packages:
       - build-essential
       - g++
