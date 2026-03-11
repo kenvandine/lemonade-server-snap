@@ -343,6 +343,7 @@ parts:
       - libxdmcp6
       - libxext6
       - libxfixes3
+      - libxml2
       - libxrender1
       - libxrt2
       - libxrt-npu2
