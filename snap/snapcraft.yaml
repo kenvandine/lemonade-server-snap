@@ -143,6 +143,7 @@ apps:
       LEMONADE_FLM_LINUX_BETA: 1
   flm:
     command: usr/bin/flm
+    command-chain: [bin/gpu-2404-wrapper]
     plugs:
       - accel
       - home
@@ -341,7 +342,6 @@ parts:
       - libxdmcp6
       - libxext6
       - libxfixes3
-      - libxml2
       - libxrender1
       - libxrt2
       - libxrt-npu2
