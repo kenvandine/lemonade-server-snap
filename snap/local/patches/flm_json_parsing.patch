@@ -1,0 +1,45 @@
+diff --git a/src/cpp/server/model_manager.cpp b/src/cpp/server/model_manager.cpp
+index 19371d57..a5d9e077 100644
+--- a/src/cpp/server/model_manager.cpp
++++ b/src/cpp/server/model_manager.cpp
+@@ -1456,8 +1456,10 @@ std::vector<std::string> ModelManager::get_flm_installed_models() {
+ #endif
+ 
+     // Parse output: { "models": [ { "name": "modelname:tag", ... }, ... ] }
++    // FLM may emit log lines to stdout before the JSON, so find the first '{'.
+     try {
+-        json j = JsonUtils::parse(output);
++        size_t json_start = output.find('{');
++        json j = JsonUtils::parse(json_start != std::string::npos ? output.substr(json_start) : output);
+         if (j.contains("models") && j["models"].is_array()) {
+             for (const auto& model : j["models"]) {
+                 if (model.contains("name") && model["name"].is_string()) {
+@@ -1537,8 +1539,10 @@ std::vector<ModelInfo> ModelManager::get_flm_available_models() {
+ #endif
+ 
+     // Parse output: { "models": [ { "name": "modelname:tag", "footprint": 1.23, ... }, ... ] }
++    // FLM may emit log lines to stdout before the JSON, so find the first '{'.
+     try {
+-        json j = JsonUtils::parse(output);
++        size_t json_start = output.find('{');
++        json j = JsonUtils::parse(json_start != std::string::npos ? output.substr(json_start) : output);
+         if (j.contains("models") && j["models"].is_array()) {
+             for (const auto& m : j["models"]) {
+                 if (m.contains("name") && m["name"].is_string()) {
+diff --git a/src/cpp/server/system_info.cpp b/src/cpp/server/system_info.cpp
+index 9b60150e..df8c37cd 100644
+--- a/src/cpp/server/system_info.cpp
++++ b/src/cpp/server/system_info.cpp
+@@ -1489,8 +1489,11 @@ std::string SystemInfo::get_flm_version() {
+     #endif
+ 
+     // Parse JSON output: { "version": "0.9.34" }
++    // FLM may emit log lines to stdout before the JSON (e.g. "[FLM]  Using custom model list path: ...")
++    // so find the first '{' and parse from there.
+     try {
+-        json j = JsonUtils::parse(output);
++        size_t json_start = output.find('{');
++        json j = JsonUtils::parse(json_start != std::string::npos ? output.substr(json_start) : output);
+         if (j.contains("version") && j["version"].is_string()) {
+             std::string version = j["version"].get<std::string>();
+             // If the version doesn't start with 'v', prepend it
