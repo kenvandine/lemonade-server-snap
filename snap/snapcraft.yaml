@@ -151,6 +151,7 @@ apps:
       - network
       - network-bind
       - opengl
+      - process-control
       - hardware-observe
       - system-observe
     environment:
