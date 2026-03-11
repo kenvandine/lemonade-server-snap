@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+OVERRIDE_DIR="/etc/systemd/system/snap.lemonade-server.daemon.service.d"
+OVERRIDE_FILE="$OVERRIDE_DIR/limits.conf"
+
+mkdir -p "$OVERRIDE_DIR"
+printf '[Service]\nLimitMEMLOCK=infinity\n' > "$OVERRIDE_FILE"
+systemctl daemon-reload || true
+snapctl restart lemonade-server.daemon || true
