@@ -227,8 +227,7 @@ parts:
 
   fastflowlm:
     plugin: cmake
-    source: https://github.com/kenvandine/FastFlowLM.git
-    source-branch: setrlimit
+    source: https://github.com/FastFlowLM/FastFlowLM.git
     source-subdir: src
     cmake-parameters:
       - -DCMAKE_PREFIX_PATH=/usr
