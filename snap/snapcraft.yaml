@@ -112,6 +112,7 @@ apps:
       FLM_MODEL_PATH: $SNAP_COMMON/flm/models
       FLM_CONFIG_PATH: $SNAP/usr/share/flm/model_list.json
       FLM_XCLBIN_PATH: $SNAP/usr/share/flm/xclbins
+      LEMONADE_FLM_LINUX_BETA: 1
   daemon:
     command: bin/lemonade-server-wrapper serve
     command-chain: [bin/gpu-2404-wrapper]
@@ -139,6 +140,7 @@ apps:
       FLM_MODEL_PATH: $SNAP_COMMON/flm/models
       FLM_CONFIG_PATH: $SNAP/usr/share/flm/model_list.json
       FLM_XCLBIN_PATH: $SNAP/usr/share/flm/xclbins
+      LEMONADE_FLM_LINUX_BETA: 1
   flm:
     command: usr/bin/flm
     plugs:
