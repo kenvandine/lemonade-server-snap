@@ -215,6 +215,9 @@ parts:
         VERSION=$(git describe --tags --abbrev=10)
         craftctl set version=$VERSION
       fi
+      for patch in $CRAFT_PROJECT_DIR/snap/local/patches/*.patch; do
+        patch -p1 --forward --reject-file=- < "$patch" || true
+      done
     override-build: |
       craftctl default
 
