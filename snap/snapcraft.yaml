@@ -234,7 +234,7 @@ parts:
   fastflowlm:
     plugin: cmake
     source: https://github.com/FastFlowLM/FastFlowLM.git
-    source-tag: v0.9.35
+    #source-tag: v0.9.35
     source-subdir: src
     cmake-parameters:
       - -DCMAKE_PREFIX_PATH=/usr
