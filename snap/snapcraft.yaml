@@ -225,6 +225,42 @@ parts:
       ${CRAFT_PART_SRC}/bin/gpu-2404-cleanup mesa-2404
     prime:
       - bin/gpu-2404-wrapper
+  
+  xrt:
+    plugin: cmake
+    source: https://github.com/kenvandine/XRT.git
+    source-branch: scan_devices_nonfatal_2.21
+    source-subdir: src
+    cmake-parameters:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DXRT_NPU=1
+      - -DXRT_EXCLUDE_SUB_DIRECTORY=src/python\;src/runtime_src/xocl
+    override-build: |
+      export XRT_VERSION_PATCH=75
+      craftctl default
+    build-packages:
+      - build-essential
+      - cmake
+      - git
+      - pkg-config
+      - libboost-dev
+      - libboost-filesystem-dev
+      - libboost-program-options-dev
+      - libdrm-dev
+      - libncurses-dev
+      - ocl-icd-opencl-dev
+      - opencl-headers
+      - rapidjson-dev
+      - libssl-dev
+      - uuid-dev
+      - libdw-dev
+      - libelf-dev
+      - libsystemd-dev
+      - ocl-icd-dev
+      - systemtap-sdt-dev
+    prime:
+      - usr/lib/x86_64-linux-gnu/libxrt*.so*
 
   xdna-driver:
     after: [xrt]
@@ -268,42 +304,6 @@ parts:
       - usr/lib/x86_64-linux-gnu/libxrt_driver_xdna*
     prime:
       - usr/lib/x86_64-linux-gnu/libxrt_driver_xdna*
-
-  xrt:
-    plugin: cmake
-    source: https://github.com/kenvandine/XRT.git
-    source-branch: scan_devices_nonfatal_2.21
-    source-subdir: src
-    cmake-parameters:
-      - -DCMAKE_BUILD_TYPE=Release
-      - -DCMAKE_INSTALL_PREFIX=/usr
-      - -DXRT_NPU=1
-      - -DXRT_EXCLUDE_SUB_DIRECTORY=src/python\;src/runtime_src/xocl
-    override-build: |
-      export XRT_VERSION_PATCH=75
-      craftctl default
-    build-packages:
-      - build-essential
-      - cmake
-      - git
-      - pkg-config
-      - libboost-dev
-      - libboost-filesystem-dev
-      - libboost-program-options-dev
-      - libdrm-dev
-      - libncurses-dev
-      - ocl-icd-opencl-dev
-      - opencl-headers
-      - rapidjson-dev
-      - libssl-dev
-      - uuid-dev
-      - libdw-dev
-      - libelf-dev
-      - libsystemd-dev
-      - ocl-icd-dev
-      - systemtap-sdt-dev
-    prime:
-      - usr/lib/x86_64-linux-gnu/libxrt*.so*
 
   fastflowlm:
     after: [xrt]
