@@ -426,16 +426,15 @@ parts:
       export RUSTC=/usr/bin/rustc-1.89
       ln -sf /usr/bin/cargo-1.89 /usr/bin/cargo
       ln -sf /usr/bin/rustc-1.89 /usr/bin/rustc
-      cmake "$CRAFT_PART_SRC/src" \
+      cd "$CRAFT_PART_SRC/src"
+      cmake --preset linux-snap \
         -DCMAKE_PREFIX_PATH="$CRAFT_STAGE/usr:/usr" \
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DCMAKE_XCLBIN_PREFIX=/usr/share/flm/xclbins \
-        -DFLM_VERSION=0.9.35 \
-        -DNPU_VERSION=32.0.203.304 \
         -DXRT_INCLUDE_DIR="$CRAFT_STAGE/usr/include/xrt" \
         -DXRT_LIB_DIR="$CRAFT_STAGE/usr/lib/x86_64-linux-gnu"
-      cmake --build . -- -j$(nproc)
-      DESTDIR="$CRAFT_PART_INSTALL" cmake --install .
+      cmake --build "$CRAFT_PART_BUILD" -- -j$(nproc)
+      DESTDIR="$CRAFT_PART_INSTALL" cmake --install "$CRAFT_PART_BUILD"
     prime:
       - usr/lib/*.so
       - usr/lib/*/*.so.*
