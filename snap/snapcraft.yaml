@@ -46,10 +46,6 @@ contact: https://github.com/kenvandine/lemonade-server-snap/issues
 platforms:
   amd64:
 
-package-repositories:
-  - type: apt
-    ppa: amd-team/xrt
-
 layout:
   /usr/share/lemonade-server:
     symlink: $SNAP/usr/share/lemonade-server
@@ -230,14 +226,48 @@ parts:
     prime:
       - bin/gpu-2404-wrapper
 
-  xrt-npu-driver:
+  xdna-driver:
+    after: [xrt]
     plugin: nil
-    stage-packages:
-      - libxrt-npu2
+    source: https://github.com/amd/xdna-driver.git
+    source-tag: '2.21.75'
+    build-packages:
+      - build-essential
+      - g++
+      - cmake
+      - git
+      - pkg-config
+      - libboost-dev
+      - libboost-filesystem-dev
+      - libboost-program-options-dev
+      - libdrm-dev
+      - libncurses-dev
+      - ocl-icd-opencl-dev
+      - opencl-headers
+      - rapidjson-dev
+      - libssl-dev
+      - uuid-dev
+      - libdw-dev
+      - libelf-dev
+      - libsystemd-dev
+      - ocl-icd-dev
+      - systemtap-sdt-dev
+    override-pull: |
+      craftctl default
+      git submodule update --init xrt
+      rm -rf xrt/src/python
+    override-build: |
+      export XRT_VERSION_PATCH=75
+      cmake "$CRAFT_PART_SRC" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DSKIP_KMOD=1
+      cmake --build . -- -j$(nproc)
+      DESTDIR="$CRAFT_PART_INSTALL" cmake --install .
     stage:
-      - usr/lib/x86_64-linux-gnu/libxrt_driver_xdna.so.2.21.75
+      - usr/lib/x86_64-linux-gnu/libxrt_driver_xdna*
     prime:
-      - usr/lib/x86_64-linux-gnu/libxrt_driver_xdna.so.2.21.75
+      - usr/lib/x86_64-linux-gnu/libxrt_driver_xdna*
 
   xrt:
     plugin: cmake
