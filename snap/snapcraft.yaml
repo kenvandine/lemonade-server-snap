@@ -46,10 +46,6 @@ contact: https://github.com/kenvandine/lemonade-server-snap/issues
 platforms:
   amd64:
 
-package-repositories:
-  - type: apt
-    ppa: amd-team/xrt
-
 layout:
   /usr/share/lemonade-server:
     symlink: $SNAP/usr/share/lemonade-server
@@ -229,17 +225,92 @@ parts:
       ${CRAFT_PART_SRC}/bin/gpu-2404-cleanup mesa-2404
     prime:
       - bin/gpu-2404-wrapper
+  
+  xrt:
+    plugin: cmake
+    source: https://github.com/kenvandine/XRT.git
+    source-branch: scan_devices_nonfatal_2.21
+    source-subdir: src
+    cmake-parameters:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DXRT_NPU=1
+      - -DXRT_EXCLUDE_SUB_DIRECTORY=src/python\;src/runtime_src/xocl
+      - -DDCMAKE_BUILD_RPATH_USE_ORIGIN=ON
+    override-build: |
+      export XRT_VERSION_PATCH=75
+      craftctl default
+    build-packages:
+      - build-essential
+      - cmake
+      - git
+      - pkg-config
+      - libboost-dev
+      - libboost-filesystem-dev
+      - libboost-program-options-dev
+      - libdrm-dev
+      - libncurses-dev
+      - ocl-icd-opencl-dev
+      - opencl-headers
+      - rapidjson-dev
+      - libssl-dev
+      - uuid-dev
+      - libdw-dev
+      - libelf-dev
+      - libsystemd-dev
+      - ocl-icd-dev
+      - systemtap-sdt-dev
+    prime:
+      - usr/lib/x86_64-linux-gnu/libxrt*.so*
+
+  xdna-driver:
+    after: [xrt]
+    plugin: nil
+    source: https://github.com/amd/xdna-driver.git
+    source-tag: '2.21.75'
+    build-packages:
+      - build-essential
+      - g++
+      - cmake
+      - git
+      - pkg-config
+      - libboost-dev
+      - libboost-filesystem-dev
+      - libboost-program-options-dev
+      - libdrm-dev
+      - libncurses-dev
+      - ocl-icd-opencl-dev
+      - opencl-headers
+      - rapidjson-dev
+      - libssl-dev
+      - uuid-dev
+      - libdw-dev
+      - libelf-dev
+      - libsystemd-dev
+      - ocl-icd-dev
+      - systemtap-sdt-dev
+    override-pull: |
+      craftctl default
+      git submodule update --init xrt
+      rm -rf xrt/src/python
+    override-build: |
+      export XRT_VERSION_PATCH=75
+      cmake "$CRAFT_PART_SRC" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DSKIP_KMOD=1
+      cmake --build . -- -j$(nproc)
+      DESTDIR="$CRAFT_PART_INSTALL" cmake --install .
+    stage:
+      - usr/lib/x86_64-linux-gnu/libxrt_driver_xdna*
+    prime:
+      - usr/lib/x86_64-linux-gnu/libxrt_driver_xdna*
 
   fastflowlm:
+    after: [xrt]
     plugin: cmake
     source: https://github.com/FastFlowLM/FastFlowLM.git
     source-subdir: src
-    cmake-parameters:
-      - -DCMAKE_PREFIX_PATH=/usr
-      - -DCMAKE_INSTALL_PREFIX=/usr
-      - -DCMAKE_XCLBIN_PREFIX=/usr/share/flm/xclbins
-      - -DFLM_VERSION=0.9.35
-      - -DNPU_VERSION=32.0.203.304
     build-packages:
       - build-essential
       - g++
@@ -251,7 +322,6 @@ parts:
       - zlib1g-dev
       - pkg-config
       - ninja-build
-      - libxrt-dev
       - libboost-program-options-dev
       - libboost-dev
       - libavcodec-dev
@@ -347,8 +417,6 @@ parts:
       - libxext6
       - libxfixes3
       - libxrender1
-      - libxrt2
-      - libxrt-npu2
       - libxvidcore4
       - libzmq5
       - libzvbi0t64
@@ -358,7 +426,16 @@ parts:
       export RUSTC=/usr/bin/rustc-1.89
       ln -sf /usr/bin/cargo-1.89 /usr/bin/cargo
       ln -sf /usr/bin/rustc-1.89 /usr/bin/rustc
-      craftctl default
+      cmake "$CRAFT_PART_SRC/src" \
+        -DCMAKE_PREFIX_PATH="$CRAFT_STAGE/usr:/usr" \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_XCLBIN_PREFIX=/usr/share/flm/xclbins \
+        -DFLM_VERSION=0.9.35 \
+        -DNPU_VERSION=32.0.203.304 \
+        -DXRT_INCLUDE_DIR="$CRAFT_STAGE/usr/include/xrt" \
+        -DXRT_LIB_DIR="$CRAFT_STAGE/usr/lib/x86_64-linux-gnu"
+      cmake --build . -- -j$(nproc)
+      DESTDIR="$CRAFT_PART_INSTALL" cmake --install .
     prime:
       - usr/lib/*.so
       - usr/lib/*/*.so.*
