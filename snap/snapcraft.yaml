@@ -236,6 +236,7 @@ parts:
       - -DCMAKE_INSTALL_PREFIX=/usr
       - -DXRT_NPU=1
       - -DXRT_EXCLUDE_SUB_DIRECTORY=src/python\;src/runtime_src/xocl
+      - -DDCMAKE_BUILD_RPATH_USE_ORIGIN=ON
     override-build: |
       export XRT_VERSION_PATCH=75
       craftctl default
