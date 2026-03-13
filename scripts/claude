@@ -1,0 +1,66 @@
+#!/bin/bash
+# Shim to launch the user-installed (or auto-downloaded) claude CLI.
+#
+# Problems this solves in strict confinement:
+#   1. lemonade-server sets HOME=$SNAP_COMMON, so claude would look for its
+#      config in the wrong place.  We derive the real home from SNAP_USER_COMMON
+#      and restore it before exec-ing claude.
+#   2. If claude isn't installed yet, we download @anthropic-ai/claude-code from
+#      the npm registry using curl, extract cli.js, and write a node wrapper that
+#      uses $SNAP/usr/bin/node (always executable inside the snap).
+
+CLAUDE_BIN="$SNAP_USER_COMMON/tools/bin/claude"
+MODULES_DIR="$SNAP_USER_COMMON/tools/lib/node_modules/@anthropic-ai/claude-code"
+
+_install_claude() {
+    echo "claude not found at $CLAUDE_BIN" >&2
+    echo "Downloading @anthropic-ai/claude-code from the npm registry..." >&2
+
+    mkdir -p "$SNAP_USER_COMMON/tools/bin" "$MODULES_DIR"
+
+    # Resolve the latest version tag
+    local version
+    version=$(curl -sf "https://registry.npmjs.org/@anthropic-ai/claude-code/latest" \
+        | sed -n 's/.*"version":"\([^"]*\)".*/\1/p' | head -1)
+
+    if [ -z "$version" ]; then
+        echo "ERROR: could not resolve @anthropic-ai/claude-code version from npm registry." >&2
+        echo "Check your network connection, or install manually:" >&2
+        echo "  npm install -g @anthropic-ai/claude-code --prefix '$SNAP_USER_COMMON/tools'" >&2
+        exit 1
+    fi
+
+    echo "Downloading claude v${version}..." >&2
+    local tarball="https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-${version}.tgz"
+
+    if ! curl -fsSL "$tarball" | tar -xzf - --strip-components=1 -C "$MODULES_DIR"; then
+        echo "ERROR: download of @anthropic-ai/claude-code v${version} failed." >&2
+        exit 1
+    fi
+
+    # Make the bundled ripgrep executable so claude's search features work
+    chmod +x "$MODULES_DIR/vendor/ripgrep/x64-linux/rg" 2>/dev/null || true
+
+    # Write a small wrapper that uses the node binary bundled with the snap.
+    # $SNAP is set by snapd at runtime, so this always resolves correctly even
+    # after snap refreshes.
+    cat > "$CLAUDE_BIN" << 'WRAPPER'
+#!/bin/sh
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+exec "${SNAP}/usr/bin/node" \
+    "$SCRIPT_DIR/../lib/node_modules/@anthropic-ai/claude-code/cli.js" "$@"
+WRAPPER
+    chmod +x "$CLAUDE_BIN"
+    echo "claude v${version} installed to $CLAUDE_BIN" >&2
+}
+
+if [ ! -x "$CLAUDE_BIN" ]; then
+    _install_claude
+fi
+
+# Use SNAP_USER_COMMON as HOME so claude stores its config within the snap's
+# user data directory (~/.claude → $SNAP_USER_COMMON/.claude), which is
+# accessible under strict confinement without a personal-files plug.
+# Unset CLAUDECODE so claude doesn't refuse to start when the user is already
+# running a Claude Code session in the same shell environment.
+exec env -u CLAUDECODE HOME="$SNAP_USER_COMMON" "$CLAUDE_BIN" "$@"
