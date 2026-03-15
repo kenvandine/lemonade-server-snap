@@ -17,14 +17,16 @@ _install_codex() {
 
     mkdir -p "$SNAP_USER_COMMON/tools/bin"
 
-    # Resolve the latest version tag
-    local version
-    version=$(curl -sf "https://registry.npmjs.org/@openai/codex/latest" \
-        | sed -n 's/.*"version":"\([^"]*\)".*/\1/p' | head -1)
+    # Resolve the latest version tag and integrity from npm metadata
+    local metadata version integrity
+    metadata=$(curl -sf "https://registry.npmjs.org/@openai/codex/latest")
+    version=$(printf '%s\n' "$metadata" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p' | head -1)
+    # Extract the dist.integrity field (e.g., "sha512-<base64>") for the resolved version
+    integrity=$(printf '%s\n' "$metadata" | sed -n 's/.*"integrity":"\([^"]*\)".*/\1/p' | head -1)
 
-    if [ -z "$version" ]; then
-        echo "ERROR: could not resolve @openai/codex version from npm registry." >&2
-        echo "Check your network connection, or install manually:" >&2
+    if [ -z "$version" ] || [ -z "$integrity" ]; then
+        echo "ERROR: could not resolve @openai/codex version and integrity from npm registry." >&2
+        echo "Check your network connection, or install manually (after verifying checksum):" >&2
         echo "  curl -fsSL https://registry.npmjs.org/@openai/codex/-/codex-VERSION-linux-x64.tgz \\" >&2
         echo "    | tar -xzOf - package/vendor/x86_64-unknown-linux-musl/codex/codex \\" >&2
         echo "    > '$CODEX_BIN' && chmod +x '$CODEX_BIN'" >&2
@@ -34,14 +36,59 @@ _install_codex() {
     echo "Downloading codex v${version} (linux-x64 native binary)..." >&2
     local tarball="https://registry.npmjs.org/@openai/codex/-/codex-${version}-linux-x64.tgz"
 
-    # The linux-x64 tarball ships a statically-linked musl binary; extract it directly.
-    if ! curl -fsSL "$tarball" \
-            | tar -xzOf - package/vendor/x86_64-unknown-linux-musl/codex/codex \
-            > "$CODEX_BIN"; then
+    # Download tarball to a temporary file so we can verify its integrity.
+    local tmp_tgz
+    tmp_tgz=$(mktemp "${TMPDIR:-/tmp}/codex-tarball.XXXXXX") || {
+        echo "ERROR: failed to create temporary file for @openai/codex download." >&2
+        exit 1
+    }
+
+    if ! curl -fsSL "$tarball" -o "$tmp_tgz"; then
         echo "ERROR: download of @openai/codex v${version}-linux-x64 failed." >&2
+        rm -f "$tmp_tgz"
         rm -f "$CODEX_BIN"
         exit 1
     fi
+
+    # Verify tarball integrity against the npm dist.integrity field (sha512-<base64>).
+    local expected_prefix="sha512-"
+    local expected actual
+    expected="$integrity"
+    if [ "${expected#"$expected_prefix"}" = "$expected" ]; then
+        echo "ERROR: unsupported integrity format '$integrity' (expected sha512-*)." >&2
+        rm -f "$tmp_tgz"
+        rm -f "$CODEX_BIN"
+        exit 1
+    fi
+    expected="${expected#"$expected_prefix"}"
+
+    # Compute base64-encoded SHA-512 of the downloaded tarball.
+    if ! actual=$(openssl dgst -sha512 -binary "$tmp_tgz" 2>/dev/null | openssl base64 -A); then
+        echo "ERROR: failed to compute SHA-512 checksum for @openai/codex tarball." >&2
+        rm -f "$tmp_tgz"
+        rm -f "$CODEX_BIN"
+        exit 1
+    fi
+
+    if [ "$actual" != "$expected" ]; then
+        echo "ERROR: integrity check failed for @openai/codex v${version}-linux-x64 tarball." >&2
+        echo "Expected (from npm dist.integrity): $expected" >&2
+        echo "Actual (computed):                $actual" >&2
+        rm -f "$tmp_tgz"
+        rm -f "$CODEX_BIN"
+        exit 1
+    fi
+
+    # The linux-x64 tarball ships a statically-linked musl binary; extract it directly.
+    if ! tar -xzOf "$tmp_tgz" package/vendor/x86_64-unknown-linux-musl/codex/codex \
+            > "$CODEX_BIN"; then
+        echo "ERROR: failed to extract @openai/codex v${version}-linux-x64 binary." >&2
+        rm -f "$tmp_tgz"
+        rm -f "$CODEX_BIN"
+        exit 1
+    fi
+
+    rm -f "$tmp_tgz"
     chmod +x "$CODEX_BIN"
     echo "codex v${version} installed to $CODEX_BIN" >&2
 }
