@@ -124,19 +124,9 @@ CONTEXT_ARGS=()
 if [ -n "$MODEL_NAME" ] && [ -n "$OPENAI_BASE_URL" ]; then
     SERVER_BASE="${OPENAI_BASE_URL%%/v1*}"
     ctx_size=$(curl -sf "$SERVER_BASE/api/v1/health" 2>/dev/null \
-        | python3 -c "
-import sys, json
-model = '$MODEL_NAME'
-try:
-    data = json.load(sys.stdin)
-    for m in data.get('all_models_loaded', []):
-        if m.get('model_name') == model:
-            v = m.get('recipe_options', {}).get('ctx_size', '')
-            if v: print(v)
-            break
-except Exception:
-    pass
-" 2>/dev/null)
+        | jq -r --arg model "$MODEL_NAME" \
+            '.all_models_loaded[]? | select(.model_name == $model) | .recipe_options.ctx_size // empty' \
+            2>/dev/null | head -n1)
     if [ -n "$ctx_size" ] && [ "$ctx_size" -gt 0 ] 2>/dev/null; then
         tool_limit=$(( ctx_size / 8 ))
         [ "$tool_limit" -lt 8192 ] && tool_limit=8192
