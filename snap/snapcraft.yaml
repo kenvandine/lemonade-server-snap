@@ -466,6 +466,7 @@ parts:
   tools:
     plugin: nil
     stage-packages:
+      - gh
       - git
       - jq
       - make
