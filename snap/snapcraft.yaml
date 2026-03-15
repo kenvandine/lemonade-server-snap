@@ -46,10 +46,6 @@ contact: https://github.com/kenvandine/lemonade-server-snap/issues
 platforms:
   amd64:
 
-package-repositories:
-  - type: apt
-    ppa: amd-team/xrt
-
 layout:
   /usr/share/lemonade-server:
     symlink: $SNAP/usr/share/lemonade-server
@@ -237,18 +233,6 @@ parts:
       ${CRAFT_PART_SRC}/bin/gpu-2404-cleanup mesa-2404
     prime:
       - bin/gpu-2404-wrapper
-
-  fastflowlm:
-    plugin: cmake
-    source: https://github.com/FastFlowLM/FastFlowLM.git
-    #source-tag: v0.9.35
-    source-subdir: src
-    cmake-parameters:
-      - -DCMAKE_PREFIX_PATH=/usr
-      - -DCMAKE_INSTALL_PREFIX=/usr
-      - -DCMAKE_XCLBIN_PREFIX=/usr/share/flm/xclbins
-      - -DFLM_VERSION=0.9.35
-      - -DNPU_VERSION=32.0.203.304
   
   xrt:
     plugin: cmake
@@ -334,6 +318,7 @@ parts:
     after: [xrt]
     plugin: cmake
     source: https://github.com/FastFlowLM/FastFlowLM.git
+    #source-tag: v0.9.35
     source-subdir: src
     build-packages:
       - build-essential
