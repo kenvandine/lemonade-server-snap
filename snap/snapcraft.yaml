@@ -455,8 +455,19 @@ parts:
       lemonade-server-wrapper: bin/lemonade-server-wrapper
       metrics: bin/metrics
       claude: usr/bin/claude
+      codex: usr/bin/codex
     override-prime: |
       craftctl default
       chmod +x $CRAFT_PRIME/bin/lemonade-server-wrapper
       chmod +x $CRAFT_PRIME/bin/metrics
       chmod +x $CRAFT_PRIME/usr/bin/claude
+      chmod +x $CRAFT_PRIME/usr/bin/codex
+
+  tools:
+    plugin: nil
+    stage-packages:
+      - git
+      - jq
+      - make
+      - patch
+      - ripgrep
