@@ -53,6 +53,10 @@ package-repositories:
 layout:
   /usr/share/lemonade-server:
     symlink: $SNAP/usr/share/lemonade-server
+  # Node.js externalizes some builtins to /usr/share/nodejs at a hardcoded path.
+  # Bind the snap's copy so node can find them at runtime.
+  /usr/share/nodejs:
+    bind: $SNAP/usr/share/nodejs
   # Add layout entries so XRT's hardcoded absolute paths resolve to the snap's copies
   /usr/lib/x86_64-linux-gnu/libxrt_core.so.2:
     bind-file: $SNAP/usr/lib/x86_64-linux-gnu/libxrt_core.so.2.21.75
@@ -66,7 +70,6 @@ plugs:
     interface: content
     target: $SNAP/gpu-2404
     default-provider: mesa-2404
-
 slots:
   # Adds a pseudo content interface to allow clients to express their
   # runtime dependency on lemonade-server
@@ -105,8 +108,8 @@ apps:
       - hardware-observe
       - system-observe
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP_COMMON/cache/lemonade/bin/llamacpp/vulka    n:$SNAP_COMMON/cache/lemonade/bin/whispercpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-      PATH: "$SNAP/usr/bin:$PATH"
+      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP_COMMON/cache/lemonade/bin/llamacpp/vulkan:$SNAP_COMMON/cache/lemonade/bin/whispercpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      PATH: "$SNAP/usr/bin:$SNAP_USER_COMMON/tools/bin:$PATH"
       HOME: "$SNAP_COMMON"
       LEMONADE_CACHE_DIR: "$SNAP_COMMON/cache/lemonade"
       FLM_MODEL_PATH: $SNAP_COMMON/flm/models
@@ -173,6 +176,10 @@ parts:
       - libatomic1
       - libcurl4t64
       - curl # for metrics
+      - nodejs # for running @anthropic-ai/claude-code cli.js when auto-downloaded
+      - node-cjs-module-lexer # nodejs externalized builtin
+      - node-undici # nodejs externalized builtin
+      - node-acorn # nodejs externalized builtins (acorn + acorn-walk)
       - unzip # For extracting backends at runtime
       - libdrm-amdgpu1 # SD backends need this at runtime
       - libnuma1 # SD backends need this at runtime
@@ -373,7 +380,21 @@ parts:
     organize:
       lemonade-server-wrapper: bin/lemonade-server-wrapper
       metrics: bin/metrics
+      claude: usr/bin/claude
+      codex: usr/bin/codex
     override-prime: |
       craftctl default
       chmod +x $CRAFT_PRIME/bin/lemonade-server-wrapper
       chmod +x $CRAFT_PRIME/bin/metrics
+      chmod +x $CRAFT_PRIME/usr/bin/claude
+      chmod +x $CRAFT_PRIME/usr/bin/codex
+
+  tools:
+    plugin: nil
+    stage-packages:
+      - gh
+      - git
+      - jq
+      - make
+      - patch
+      - ripgrep
