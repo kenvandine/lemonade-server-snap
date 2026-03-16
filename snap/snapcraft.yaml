@@ -55,11 +55,11 @@ layout:
     bind: $SNAP/usr/share/nodejs
   # Add layout entries so XRT's hardcoded absolute paths resolve to the snap's copies
   /usr/lib/x86_64-linux-gnu/libxrt_core.so.2:
-    bind-file: $SNAP/usr/lib/x86_64-linux-gnu/libxrt_core.so.2.21.75
+    bind-file: $SNAP/usr/lib/x86_64-linux-gnu/libxrt_core.so.2.21.0
   /usr/lib/x86_64-linux-gnu/libxrt_coreutil.so.2:
-    bind-file: $SNAP/usr/lib/x86_64-linux-gnu/libxrt_coreutil.so.2.21.75
+    bind-file: $SNAP/usr/lib/x86_64-linux-gnu/libxrt_coreutil.so.2.21.0
   /usr/lib/x86_64-linux-gnu/libxrt_driver_xdna.so.2:
-    bind-file: $SNAP/usr/lib/x86_64-linux-gnu/libxrt_driver_xdna.so.2.21.75
+    bind-file: $SNAP/usr/lib/x86_64-linux-gnu/libxrt_driver_xdna.so.2.21.0
       
 plugs:
   gpu-2404:
