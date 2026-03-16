@@ -167,6 +167,7 @@ parts:
     plugin: nil
     build-packages:
       - curl
+      - libnode-dev
     stage-packages:
       - libgomp1
       - libatomic1
