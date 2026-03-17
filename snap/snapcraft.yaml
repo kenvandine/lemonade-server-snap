@@ -24,10 +24,6 @@ description: |
   The server starts automatically after installation. Access the API at:
   http://localhost:8000/api/v1
 
-  **ROCm Support (AMD GPUs):**
-  For ROCm GPU acceleration, connect the process-control interface:
-  sudo snap connect lemonade-server:process-control
-
   For status/metrics reporting, lemonade-server.metrics requires:
   sudo snap connect lemonade-server:system-observe
 
