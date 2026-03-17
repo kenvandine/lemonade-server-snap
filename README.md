@@ -211,27 +211,6 @@ the discrete GPU:
 sudo snap set lemonade-server gpu-device=nvidia
 ```
 
-### ROCm not working (AMD GPUs)
-
-If you have an AMD GPU but ROCm isn't working:
-
-1. Ensure `process-control` interface is connected:
-   ```bash
-   sudo snap connect lemonade-server:process-control
-   ```
-
-2. Restart the service:
-   ```bash
-   sudo snap restart lemonade-server.daemon
-   ```
-
-3. Check the logs for backend detection:
-   ```bash
-   sudo journalctl -u snap.lemonade-server.daemon.service -n 20
-   ```
-
-   You should see: `[Lemonade Wrapper] AMD GPU detected, using ROCm backend`
-
 ### Permission issues
 
 The snap runs in strict confinement. If you need to access files outside the allowed locations, you may need to copy them to your home directory first.
@@ -246,7 +225,7 @@ df -h /var/snap/lemonade-server/common/
 ## Building from Source
 
 ```bash
-git clone https://github.com/kenvandine/lemonade-server.git
+git clone https://github.com/lemonade-sdk/lemonade-server.git
 cd lemonade-server
 snapcraft
 sudo snap install --dangerous lemonade-server_*.snap
