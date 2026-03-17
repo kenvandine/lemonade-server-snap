@@ -131,7 +131,7 @@ apps:
       - hardware-observe
       - system-observe
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP_COMMON/cache/lemonade/bin/llamacpp/vulka    n:$SNAP_COMMON/cache/lemonade/bin/whispercpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP_COMMON/cache/lemonade/bin/llamacpp/vulkan:$SNAP_COMMON/cache/lemonade/bin/whispercpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
       PATH: "$SNAP/usr/bin:$PATH"
       HOME: "$SNAP_COMMON"
       LEMONADE_CACHE_DIR: "$SNAP_COMMON/cache/lemonade"
