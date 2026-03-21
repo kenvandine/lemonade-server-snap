@@ -191,6 +191,7 @@ parts:
   lemonade-server:
     plugin: cmake
     source: https://github.com/lemonade-sdk/lemonade.git
+    source-branch: spring-cleaning
     cmake-parameters:
       - -DCMAKE_PREFIX_PATH=/usr
       - -DCMAKE_INSTALL_PREFIX=/usr
