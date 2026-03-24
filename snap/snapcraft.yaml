@@ -193,6 +193,7 @@ parts:
     source: https://github.com/lemonade-sdk/lemonade.git
     source-tag: v10.0.0
     cmake-parameters:
+      - -DCMAKE_BUILD_TYPE=Release
       - -DCMAKE_PREFIX_PATH=/usr
       - -DCMAKE_INSTALL_PREFIX=/usr
       - -DBUILD_WEB_APP=ON
