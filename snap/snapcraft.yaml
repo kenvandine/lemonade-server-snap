@@ -192,6 +192,7 @@ parts:
     plugin: cmake
     source: https://github.com/lemonade-sdk/lemonade.git
     cmake-parameters:
+      - -DCMAKE_BUILD_TYPE=Release
       - -DCMAKE_PREFIX_PATH=/usr
       - -DCMAKE_INSTALL_PREFIX=/usr
       - -DBUILD_WEB_APP=ON
@@ -215,9 +216,6 @@ parts:
         VERSION=$(git describe --tags --abbrev=10)
         craftctl set version=$VERSION
       fi
-      for patch in $CRAFT_PROJECT_DIR/snap/local/patches/*.patch; do
-        patch -p1 --forward --reject-file=- < "$patch" || true
-      done
     override-build: |
       craftctl default
 
