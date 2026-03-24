@@ -191,8 +191,7 @@ parts:
   lemonade-server:
     plugin: cmake
     source: https://github.com/lemonade-sdk/lemonade.git
-    #source-tag: v10.0.0
-    source-commit: 2959674e2b587f2c21d4f4da835a49ae0bc6d1e2
+    source-tag: v10.0.1
     cmake-parameters:
       - -DCMAKE_BUILD_TYPE=Release
       - -DCMAKE_PREFIX_PATH=/usr
