@@ -34,8 +34,16 @@ jobs:
       - name: Get current source-tag from snapcraft.yaml
         id: current
         run: |
-          # Extract current source-tag if it exists
-          CURRENT_TAG=$(grep -oP '^\s+source-tag:\s*\K.*' snap/snapcraft.yaml || echo "")
+          # Extract source-tag from the lemonade-server part only
+          CURRENT_TAG=$(awk '
+            /^  lemonade-server:/ { f=1; next }
+            f && /^  [a-z]/ { exit }
+            f && /^\s+source-tag:/ {
+              sub(/.*source-tag:[[:space:]]*/, "")
+              gsub(/'"'"'/, "")
+              print; exit
+            }
+          ' snap/snapcraft.yaml)
           echo "Current source-tag: $CURRENT_TAG"
           echo "tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
 
