@@ -271,7 +271,7 @@ parts:
     after: [xrt]
     plugin: nil
     source: https://github.com/amd/xdna-driver.git
-    source-tag: '2.21.75'
+    source-tag: '202610.2.21.21'
     build-packages:
       - build-essential
       - g++
@@ -314,7 +314,7 @@ parts:
     after: [xrt]
     plugin: cmake
     source: https://github.com/FastFlowLM/FastFlowLM.git
-    source-tag: v0.9.35
+    source-tag: v0.9.37
     source-subdir: src
     build-packages:
       - build-essential
