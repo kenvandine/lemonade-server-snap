@@ -19,68 +19,155 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: stable
 
-      - name: Get latest upstream tag
-        id: upstream
-        run: |
-          # Fetch tags from upstream repository
-          LATEST_TAG=$(git ls-remote --tags --sort=-v:refname \
-            https://github.com/lemonade-sdk/lemonade.git \
-            | grep -oP 'refs/tags/\K[^{}]+$' \
-            | head -n 1)
-
-          echo "Latest upstream tag: $LATEST_TAG"
-          echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-
-      - name: Get current source-tag from snapcraft.yaml
-        id: current
-        run: |
-          # Extract current source-tag if it exists
-          CURRENT_TAG=$(grep -oP '^\s+source-tag:\s*\K.*' snap/snapcraft.yaml || echo "")
-          echo "Current source-tag: $CURRENT_TAG"
-          echo "tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
-
-      - name: Check if update is needed
+      - name: Check upstream tags for all parts
         id: check
         run: |
-          if [ "${{ steps.upstream.outputs.tag }}" != "${{ steps.current.outputs.tag }}" ]; then
-            echo "Update needed: ${{ steps.current.outputs.tag }} -> ${{ steps.upstream.outputs.tag }}"
-            echo "update_needed=true" >> $GITHUB_OUTPUT
-          else
-            echo "Already up to date"
-            echo "update_needed=false" >> $GITHUB_OUTPUT
-          fi
+          python3 << 'PYEOF'
+          import yaml, re, subprocess, json, os
 
-      - name: Update snapcraft.yaml
+          with open('snap/snapcraft.yaml', 'r') as f:
+              data = yaml.safe_load(f)
+
+          parts = data.get('parts', {})
+          updates = []
+
+          for part_name, part_data in parts.items():
+              if not part_data:
+                  continue
+              source_tag = part_data.get('source-tag')
+              source_url = part_data.get('source', '')
+              if not source_tag or not source_url:
+                  continue
+              m = re.match(r'https://github\.com/([^/]+/[^/]+?)(?:\.git)?$', source_url)
+              if not m:
+                  print(f"Skipping {part_name}: not a plain GitHub URL")
+                  continue
+              repo = m.group(1)
+              result = subprocess.run(
+                  ['git', 'ls-remote', '--tags', '--sort=-v:refname',
+                   f'https://github.com/{repo}.git'],
+                  capture_output=True, text=True
+              )
+              tags = [
+                  line.split('refs/tags/')[-1].strip()
+                  for line in result.stdout.strip().split('\n')
+                  if line and not line.endswith('^{}')
+              ]
+              if not tags:
+                  print(f"No tags found for {part_name} ({repo})")
+                  continue
+              latest = tags[0]
+              current = str(source_tag)
+              print(f"{part_name}: current={current}, latest={latest}")
+              if latest != current:
+                  updates.append({'part': part_name, 'repo': repo,
+                                  'current': current, 'latest': latest})
+
+          with open('/tmp/updates.json', 'w') as f:
+              json.dump(updates, f)
+
+          if updates:
+              print(f"Updates needed: {len(updates)}")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write('update_needed=true\n')
+          else:
+              print("All parts up to date")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write('update_needed=false\n')
+          PYEOF
+
+      - name: Apply updates to snapcraft.yaml
         if: steps.check.outputs.update_needed == 'true'
         run: |
-          NEW_TAG="${{ steps.upstream.outputs.tag }}"
+          python3 << 'PYEOF'
+          import json, re
 
-          # Check if source-tag already exists in the lemonade part
-          if grep -q '^\s\+source-tag:' snap/snapcraft.yaml; then
-            # Update existing source-tag
-            sed -i "s/^\(\s\+source-tag:\s*\).*/\1$NEW_TAG/" snap/snapcraft.yaml
-          else
-            # Add source-tag after source-subdir line in lemonade part
-            sed -i "/^\s\+source-subdir: src\/app/a\\    source-tag: $NEW_TAG" snap/snapcraft.yaml
-          fi
+          with open('/tmp/updates.json') as f:
+              updates = json.load(f)
 
-          echo "Updated snapcraft.yaml to use tag: $NEW_TAG"
-          cat snap/snapcraft.yaml
+          update_map = {u['part']: u['latest'] for u in updates}
+
+          with open('snap/snapcraft.yaml', 'r') as f:
+              lines = f.readlines()
+
+          new_lines = []
+          current_part = None
+          in_parts = False
+
+          for line in lines:
+              stripped = line.lstrip()
+              indent = len(line) - len(stripped)
+
+              if line.startswith('parts:'):
+                  in_parts = True
+              elif in_parts and indent == 2 and not stripped.startswith('#'):
+                  m = re.match(r'([\w][\w-]*):\s*\n', stripped)
+                  if m:
+                      current_part = m.group(1)
+
+              if (in_parts and current_part in update_map
+                      and re.match(r'\s+source-tag:', line)
+                      and not stripped.startswith('#')):
+                  new_tag = update_map[current_part]
+                  if "'" in line:
+                      line = re.sub(r"(source-tag:\s*')[^']*(')", rf"\g<1>{new_tag}\g<2>", line)
+                  elif '"' in line:
+                      line = re.sub(r'(source-tag:\s*")[^"]*(")', rf"\g<1>{new_tag}\g<2>", line)
+                  else:
+                      line = re.sub(r'(source-tag:\s*)\S+', rf'\g<1>{new_tag}', line)
+
+              new_lines.append(line)
+
+          with open('snap/snapcraft.yaml', 'w') as f:
+              f.writelines(new_lines)
+
+          print("Updated snap/snapcraft.yaml:")
+          for u in updates:
+              print(f"  {u['part']}: {u['current']} -> {u['latest']}")
+          PYEOF
+
+      - name: Build PR metadata
+        if: steps.check.outputs.update_needed == 'true'
+        id: pr_meta
+        run: |
+          python3 << 'PYEOF'
+          import json, os
+
+          with open('/tmp/updates.json') as f:
+              updates = json.load(f)
+
+          if len(updates) == 1:
+              u = updates[0]
+              title = f"Update {u['part']} to {u['latest']}"
+          else:
+              parts_str = ', '.join(u['part'] for u in updates)
+              title = f"Update upstream releases: {parts_str}"
+
+          body_lines = [
+              "Automated update to track upstream releases.",
+              "",
+              "**Changes:**",
+          ]
+          for u in updates:
+              body_lines.append(
+                  f"- **{u['part']}**: `{u['current']}` \u2192 `{u['latest']}` "
+                  f"([release](https://github.com/{u['repo']}/releases/tag/{u['latest']}))"
+              )
+
+          body = '\n'.join(body_lines)
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"title={title}\n")
+              f.write(f"body<<PREOF\n{body}\nPREOF\n")
+          PYEOF
 
       - name: Create Pull Request
         if: steps.check.outputs.update_needed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Update to upstream ${{ steps.upstream.outputs.tag }}"
-          title: "Update to upstream ${{ steps.upstream.outputs.tag }}"
-          body: |
-            Automated update to track upstream release.
-
-            **Changes:**
-            - Updated source-tag from `${{ steps.current.outputs.tag }}` to `${{ steps.upstream.outputs.tag }}`
-
-            **Upstream release:**
-            https://github.com/lemonade-sdk/lemonade/releases/tag/${{ steps.upstream.outputs.tag }}
-          branch: update-upstream-${{ steps.upstream.outputs.tag }}
+          commit-message: "${{ steps.pr_meta.outputs.title }}"
+          title: "${{ steps.pr_meta.outputs.title }}"
+          body: "${{ steps.pr_meta.outputs.body }}"
+          branch: update-upstream-tags
           delete-branch: true
