@@ -91,4 +91,4 @@ if [ "$BACKEND" = "vulkan" ] && [ -z "$gfx_version" ]; then
   echo "[Lemonade Wrapper] No AMD GPU detected, using Vulkan backend" >&2
 fi
 
-exec "$SNAP/usr/bin/lemonade-server" "$@" --llamacpp "$BACKEND" --host "$LEMONADE_HOST" --port "$LEMONADE_PORT" --log-level "$LEMONADE_LOG_LEVEL" --ctx-size "$LEMONADE_CTX_SIZE" --llamacpp-args "$LEMONADE_LLAMACPP_ARGS"
+exec "$SNAP/usr/bin/lemond" "$@" --llamacpp "$BACKEND" --host "$LEMONADE_HOST" --port "$LEMONADE_PORT" --log-level "$LEMONADE_LOG_LEVEL" --ctx-size "$LEMONADE_CTX_SIZE" --llamacpp-args "$LEMONADE_LLAMACPP_ARGS"
