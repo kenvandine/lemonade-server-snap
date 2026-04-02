@@ -29,7 +29,7 @@ sudo snap install lemonade-server
 
 ## Quick Start
 
-After installation, the server starts automatically and listens on port 8000.
+After installation, the server starts automatically and listens on port 13305.
 
 The snap automatically detects your GPU and selects the best backend:
 - **AMD GPUs** - Uses ROCm for optimal performance
@@ -71,7 +71,7 @@ sudo journalctl -u snap.lemonade-server.daemon.service -f
 ### Test the API
 
 ```bash
-curl http://localhost:8000/api/v1/models
+curl http://localhost:13305/api/v1/models
 ```
 
 ## Usage
@@ -79,7 +79,7 @@ curl http://localhost:8000/api/v1/models
 ### Load a model
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/load \
+curl -X POST http://localhost:13305/api/v1/load \
   -H "Content-Type: application/json" \
   -d '{"model_name": "Llama-3.2-3B-Instruct-GGUF"}'
 ```
@@ -87,7 +87,7 @@ curl -X POST http://localhost:8000/api/v1/load \
 ### Chat completion
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/chat/completions \
+curl -X POST http://localhost:13305/api/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "Llama-3.2-3B-Instruct-GGUF",
@@ -98,7 +98,7 @@ curl -X POST http://localhost:8000/api/v1/chat/completions \
 ### List available models
 
 ```bash
-curl http://localhost:8000/api/v1/models
+curl http://localhost:13305/api/v1/models
 ```
 
 ## Configuration
@@ -108,7 +108,7 @@ curl http://localhost:8000/api/v1/models
 You can configure the server using snap settings:
 
 ```bash
-# Set the server port (default: 8000)
+# Set the server port (default: 13305)
 sudo snap set lemonade-server port=9000
 
 # Set the IP address to bind to (default: 127.0.0.1)
@@ -133,7 +133,7 @@ Changes take effect after the service restarts automatically.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `port` | 8000 | Server port number |
+| `port` | 13305 | Server port number |
 | `ip-address` | 127.0.0.1 | IP address to bind to (use 0.0.0.0 for all interfaces) |
 | `log-level` | info | Log verbosity (debug, info, warn) |
 | `ctx-size` | 4096 | Context window size in tokens |
@@ -179,10 +179,10 @@ lemonade-server serve --port 8080
 
 Lemonade Server is compatible with any application that supports the OpenAI API:
 
-- **Open WebUI** - Set API base URL to `http://localhost:8000/api/v1`
+- **Open WebUI** - Set API base URL to `http://localhost:13305/api/v1`
 - **AnythingLLM** - Configure as OpenAI-compatible endpoint
 - **Continue (VS Code)** - Use OpenAI provider with custom base URL
-- **LangChain** - Use `ChatOpenAI` with `base_url="http://localhost:8000/api/v1"`
+- **LangChain** - Use `ChatOpenAI` with `base_url="http://localhost:13305/api/v1"`
 
 ## Troubleshooting
 

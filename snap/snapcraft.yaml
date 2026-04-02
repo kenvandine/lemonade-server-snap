@@ -22,7 +22,7 @@ description: |
 
   **Quick Start:**
   The server starts automatically after installation. Access the API at:
-  http://localhost:8000/api/v1
+  http://localhost:13305/api/v1
 
   For status/metrics reporting, lemonade-server.metrics requires:
   sudo snap connect lemonade-server:system-observe
