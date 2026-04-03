@@ -24,9 +24,6 @@ description: |
   The server starts automatically after installation. Access the API at:
   http://localhost:13305/api/v1
 
-  For status/metrics reporting, lemonade-server.metrics requires:
-  sudo snap connect lemonade-server:system-observe
-
   **Documentation:** https://lemonade-server.ai/
 
 adopt-info: lemonade-server
@@ -448,13 +445,11 @@ parts:
     plugin: dump
     source: scripts/
     organize:
-      lemonade-server-wrapper: bin/lemonade-server-wrapper
       metrics: bin/metrics
       claude: usr/bin/claude
       codex: usr/bin/codex
     override-prime: |
       craftctl default
-      chmod +x $CRAFT_PRIME/bin/lemonade-server-wrapper
       chmod +x $CRAFT_PRIME/bin/metrics
       chmod +x $CRAFT_PRIME/usr/bin/claude
       chmod +x $CRAFT_PRIME/usr/bin/codex
