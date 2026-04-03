@@ -6,7 +6,7 @@ echo "Getting configuration value for 'port'"
 output=$(snapctl get port)
 if [ -z $output ]; then
 	echo "No value for port, resetting to default"
-    snapctl set port=8000
+    snapctl set port=13305
 fi
 
 echo "Getting configuration value for 'ip-address'"
