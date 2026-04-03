@@ -165,6 +165,7 @@ parts:
       - libgomp1
       - libatomic1
       - libcurl4t64
+      - libwebsockets19t64
       - curl # for metrics
       - nodejs # for running @anthropic-ai/claude-code cli.js when auto-downloaded
       - node-cjs-module-lexer # nodejs externalized builtin
@@ -203,6 +204,7 @@ parts:
       - git
       - curl
       - libcurl4-openssl-dev
+      - libwebsockets-dev
       - libssl-dev
       - zlib1g-dev
       - pkg-config
