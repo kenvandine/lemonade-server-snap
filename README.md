@@ -45,17 +45,6 @@ sudo snap connect lemonade-server:gpu-2404 mesa-2404:gpu-2404
 sudo snap restart lemonade-server.daemon
 ```
 
-### Enable ROCm Support (AMD GPUs)
-
-For ROCm GPU acceleration on AMD hardware, connect the `process-control` interface:
-
-```bash
-sudo snap connect lemonade-server:process-control
-sudo snap restart lemonade-server.daemon
-```
-
-This is required because ROCm needs permission to set CPU thread affinity for optimal performance.
-
 ### Check service status
 
 ```bash
@@ -65,7 +54,7 @@ sudo snap services lemonade-server
 ### View logs
 
 ```bash
-sudo journalctl -u snap.lemonade-server.daemon.service -f
+sudo snap logs -f lemonade-server.daemon
 ```
 
 ### Test the API
@@ -103,43 +92,6 @@ curl http://localhost:8000/api/v1/models
 
 ## Configuration
 
-### Snap settings
-
-You can configure the server using snap settings:
-
-```bash
-# Set the server port (default: 8000)
-sudo snap set lemonade-server port=9000
-
-# Set the IP address to bind to (default: 127.0.0.1)
-sudo snap set lemonade-server ip-address=0.0.0.0
-
-# Set the log level (default: info, options: debug, info, warn)
-sudo snap set lemonade-server log-level=debug
-
-# Set the context size in tokens (default: 4096)
-# Increase this for applications that need larger context windows
-sudo snap set lemonade-server ctx-size=32768
-
-# Set optional llamacpp-args
-sudo snap set lemonade-server llamacpp-args="--no-mmap --flash-attn on"
-
-# Select a specific GPU for Vulkan (default: auto-detect all)
-# Useful on multi-GPU systems to target a discrete GPU
-sudo snap set lemonade-server gpu-device=nvidia
-```
-
-Changes take effect after the service restarts automatically.
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `port` | 8000 | Server port number |
-| `ip-address` | 127.0.0.1 | IP address to bind to (use 0.0.0.0 for all interfaces) |
-| `log-level` | info | Log verbosity (debug, info, warn) |
-| `ctx-size` | 4096 | Context window size in tokens |
-| `llamacpp-args` | "" | Optional args to pass to llamacpp-server |
-| `gpu-device` | "" | Vulkan GPU filter: `nvidia`, `intel`, `amd`, or empty for all |
-
 ### Model cache location
 
 Models are cached in `/var/snap/lemonade-server/common/.cache/huggingface/`.
@@ -168,11 +120,9 @@ sudo snap stop --disable lemonade-server.daemon
 
 ### Command-line usage
 
-You can also run the server manually:
 
 ```bash
 lemonade-server --help
-lemonade-server serve --port 8080
 ```
 
 ## Connecting to Applications
@@ -199,16 +149,6 @@ Ensure the `gpu-2404` interface is connected:
 ```bash
 sudo snap connect lemonade-server:gpu-2404 mesa-2404:gpu-2404
 sudo snap restart lemonade-server.daemon
-```
-
-### Vulkan crashes on multi-GPU systems
-
-On systems with multiple GPUs (e.g. Intel integrated + NVIDIA discrete), the
-Vulkan backend may default to the integrated GPU. Use `gpu-device` to select
-the discrete GPU:
-
-```bash
-sudo snap set lemonade-server gpu-device=nvidia
 ```
 
 ### Permission issues
