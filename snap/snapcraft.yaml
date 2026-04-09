@@ -191,7 +191,7 @@ parts:
   lemonade-server:
     plugin: cmake
     source: https://github.com/lemonade-sdk/lemonade.git
-    source-tag: v10.0.1
+    source-tag: v10.2.0
     cmake-parameters:
       - -DCMAKE_BUILD_TYPE=Release
       - -DCMAKE_PREFIX_PATH=/usr
@@ -271,7 +271,7 @@ parts:
     after: [xrt]
     plugin: nil
     source: https://github.com/amd/xdna-driver.git
-    source-tag: '202610.2.21.21'
+    source-tag: '2.21.75'
     build-packages:
       - build-essential
       - g++
