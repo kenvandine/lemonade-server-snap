@@ -69,20 +69,6 @@ slots:
       - $SNAP/meta/snap.yaml
 
 apps:
-  metrics:
-    command: bin/metrics
-    command-chain: [bin/gpu-2404-wrapper]
-    plugs:
-      - accel
-      - home
-      - removable-media
-      - network
-      - network-bind
-      - opengl
-      - gpu-2404
-      - process-control
-      - hardware-observe
-      - system-observe
   lemonade-server:
     command: usr/bin/lemonade
     command-chain: [bin/gpu-2404-wrapper]
@@ -164,7 +150,7 @@ parts:
       - libatomic1
       - libcurl4t64
       - libwebsockets19t64
-      - curl # for metrics
+      - curl
       - nodejs # for running @anthropic-ai/claude-code cli.js when auto-downloaded
       - node-cjs-module-lexer # nodejs externalized builtin
       - node-undici # nodejs externalized builtin
@@ -445,12 +431,10 @@ parts:
     plugin: dump
     source: scripts/
     organize:
-      metrics: bin/metrics
       claude: usr/bin/claude
       codex: usr/bin/codex
     override-prime: |
       craftctl default
-      chmod +x $CRAFT_PRIME/bin/metrics
       chmod +x $CRAFT_PRIME/usr/bin/claude
       chmod +x $CRAFT_PRIME/usr/bin/codex
 
