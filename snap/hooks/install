@@ -1,9 +1,0 @@
-#!/bin/bash
-set -e
-
-snapctl set port=13305
-snapctl set ip-address=127.0.0.1
-snapctl set log-level=info
-snapctl set ctx-size=4096
-snapctl set llamacpp-args=""
-snapctl set gpu-device=""
