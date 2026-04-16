@@ -297,7 +297,7 @@ parts:
     after: [xrt]
     plugin: cmake
     source: https://github.com/FastFlowLM/FastFlowLM.git
-    source-tag: v0.9.38
+    source-tag: v0.9.39
     source-subdir: src
     build-packages:
       - build-essential
