@@ -1,0 +1,45 @@
+#!/bin/sh
+set -eu
+
+# Replicate the lemonade-server app environment so the bare lemonade binary
+# starts up correctly from inside the hook
+export LD_LIBRARY_PATH="$SNAP/usr/share/lemonade-server:$SNAP_COMMON/cache/lemonade/bin/llamacpp/vulkan:$SNAP_COMMON/cache/lemonade/bin/whispercpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export PATH="$SNAP/usr/bin:$PATH"
+export HOME="$SNAP_COMMON"
+export LEMONADE_CACHE_DIR="$SNAP_COMMON/cache/lemonade"
+export FLM_MODEL_PATH="$SNAP_COMMON/flm/models"
+export FLM_CONFIG_PATH="$SNAP/usr/share/flm/model_list.json"
+export FLM_XCLBIN_PATH="$SNAP/usr/share/flm/xclbins"
+
+# Pluck a single value out of `lemonade config`'s fixed-width text table.
+get_lemonade_value() {
+    "$SNAP/usr/bin/lemonade" config 2>/dev/null \
+        | awk -v k="$1" '
+            $1 == k {
+                val = $2
+                for (i = 3; i <= NF; i++) val = val " " $i
+                print val
+                exit
+            }
+        '
+}
+
+# Discover config keys by parsing `lemonade config` (snapctl has no "list all
+# keys" command, and `snapctl get -d` without a key argument is an error on
+# this snapd). For each known key, ask snapd whether a value was set via
+# `snap set` and forward it to `lemonade config set`. Then mirror back what
+# lemonade stored so `snap get` reflects post-normalization state.
+lemonade_keys=$("$SNAP/usr/bin/lemonade" config 2>/dev/null \
+    | awk '$0 ~ /^[[:space:]]/ && NF >= 2 && $1 ~ /^[a-zA-Z_][a-zA-Z0-9_]*$/ { print $1 }')
+
+for key in $lemonade_keys; do
+    val=$(snapctl get "$key" 2>/dev/null || true)
+    [ -z "$val" ] && continue
+    "$SNAP/usr/bin/lemonade" config set "$key=$val"
+    new_val=$(get_lemonade_value "$key" || true)
+    [ -n "$new_val" ] && [ "$new_val" != "$val" ] && snapctl set "$key=$new_val"
+done
+
+# Restart the daemon so it picks up the new config. No-op on initial install
+# (daemon hasn't started yet) and harmless when invoked from later `snap set`.
+snapctl restart "$SNAP_NAME.daemon" 2>/dev/null || true
