@@ -173,7 +173,7 @@ parts:
   lemonade-server:
     plugin: cmake
     source: https://github.com/lemonade-sdk/lemonade.git
-    source-tag: v10.4.0
+    source-tag: v10.5.0
     cmake-parameters:
       - -DCMAKE_BUILD_TYPE=Release
       - -DCMAKE_PREFIX_PATH=/usr
@@ -297,7 +297,7 @@ parts:
     after: [xrt]
     plugin: cmake
     source: https://github.com/FastFlowLM/FastFlowLM.git
-    source-tag: v0.9.41
+    source-tag: v0.9.42
     source-subdir: src
     build-packages:
       - build-essential
