@@ -83,7 +83,7 @@ apps:
       - hardware-observe
       - system-observe
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP_COMMON/cache/lemonade/bin/llamacpp/vulkan:$SNAP_COMMON/cache/lemonade/bin/whispercpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP/usr/lib/flm:$SNAP_COMMON/cache/lemonade/bin/llamacpp/vulkan:$SNAP_COMMON/cache/lemonade/bin/whispercpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
       PATH: "$SNAP/usr/bin:$SNAP_USER_COMMON/tools/bin:$PATH"
       HOME: "$SNAP_COMMON"
       LEMONADE_CACHE_DIR: "$SNAP_COMMON/cache/lemonade"
@@ -109,7 +109,7 @@ apps:
       - hardware-observe
       - system-observe
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP_COMMON/cache/lemonade/bin/llamacpp/vulkan:$SNAP_COMMON/cache/lemonade/bin/whispercpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP/usr/lib/flm:$SNAP_COMMON/cache/lemonade/bin/llamacpp/vulkan:$SNAP_COMMON/cache/lemonade/bin/whispercpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
       PATH: "$SNAP/usr/bin:$PATH"
       HOME: "$SNAP_COMMON"
       LEMONADE_CACHE_DIR: "$SNAP_COMMON/cache/lemonade"
@@ -131,7 +131,7 @@ apps:
       - hardware-observe
       - system-observe
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP/usr/lib/llamacpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      LD_LIBRARY_PATH: "$SNAP/usr/share/lemonade-server:$SNAP/usr/lib/flm:$SNAP/usr/lib/llamacpp/vulkan:$SNAP/usr/lib/x86_64-linux-gnu:$SNAP/lib/x86_64-linux-gnu:/var/lib/snapd/lib/gl${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
       PATH: "$SNAP/usr/bin:$PATH"
       HOME: "$SNAP_COMMON"
       LEMONADE_CACHE_DIR: "$SNAP_COMMON/cache/lemonade"
@@ -421,9 +421,12 @@ parts:
         -DXRT_LIB_DIR="$CRAFT_STAGE/usr/lib/x86_64-linux-gnu"
       cmake --build "$CRAFT_PART_BUILD" -- -j$(nproc)
       DESTDIR="$CRAFT_PART_INSTALL" cmake --install "$CRAFT_PART_BUILD"
+      install -d "$CRAFT_PART_INSTALL/usr/lib/flm"
+      install -m 0755 "$CRAFT_PART_SRC/src/lib/"*.so "$CRAFT_PART_INSTALL/usr/lib/flm/"
     prime:
       - usr/lib/*.so
       - usr/lib/*/*.so.*
+      - usr/lib/flm/*.so
       - usr/bin
       - usr/share/flm
 
